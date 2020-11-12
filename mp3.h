@@ -160,25 +160,6 @@ namespace mp3 {
             printf("\tframe_sync: %d\n", frame_sync);
             printf("\tframe_length: %d\n", frameLength());
         }
-
-//        void parseData(uint8_t* data) {
-////            uint8_t* data = new uint8_t[4];
-////            memcpy((void*)data, (void*)&rawData, 4);
-//            frame_sync = (data[0] << 3) + (data[1] >> 5);
-//            version_id = (data[1] << 3) >> 6;
-//            layer_desc = (data[1] << 5) >> 6;
-//            protection_bit = (data[1] << 7) >> 7;
-//            bitrate_ind = data[2] >> 4;
-//            sampling_rate_ind = (data[2] << 4) >> 6;
-//            padding_bit = (data[2] << 6) >> 7;
-//            private_bit = (data[2] << 7) >> 7;
-//            channel_mode = data[3] >> 6;
-//            mode_extension = (data[3] << 2) >> 6;
-//            copyright = (data[3] << 4) >> 7;
-//            original = (data[3] << 5) >> 7;
-//            emphasis = (data[3] << 6) >> 6;
-//        }
-
     } __attribute__((packed));
 
     // refer to pages 13, 24-30 of the link below for more information
@@ -201,104 +182,67 @@ namespace mp3 {
     //     uint32_t subblock_gain : 10;
     // };
 
-//    // TODO: probably should have some inheritance with the block types
-//    //       also with the mono/dual channel side info structs in general
-//    struct GranuleSideInfo {
-//        uint32_t count1table_select : 2;
-//        uint32_t scalefac_scale : 2;
-//        uint32_t preflag : 2;
-//
-//        uint32_t region1_count : 6;
-//        uint32_t region0_count : 8;
-//        uint32_t table_select : 30;
-//
-//        uint32_t windows_switching_flag : 2;
-//        uint32_t scalefac_compress : 8;
-//        uint32_t global_gain : 16;
-//        uint32_t big_values : 18;
-//        uint32_t part2_3_length : 24;
-//
-//        void printGranule() {
-//
-//            printf("\tcount1table_select: %d\n", count1table_select);
-//            printf("\tscalefac_scale: %d\n", scalefac_scale);
-//            printf("\tpreflag: %d\n", preflag);
-//            printf("\tregion1_count: %d\n", region1_count);
-//            printf("\tregion0_count: %d\n", region0_count);
-//            printf("\ttable_select: %d\n", table_select);
-//            printf("\twindows_switching_flag: %d\n", windows_switching_flag);
-//            printf("\tscalefac_compress: %d\n", scalefac_compress);
-//            printf("\tglobal_gain: %d\n", global_gain);
-//            printf("\tbig_values: %d\n", big_values);
-//            printf("\tpart2_3_length: %d\n", part2_3_length);
-//        }
-//    } __attribute__((packed));
-
     struct MP3SideInfo {
-        //uint32_t granule_2 : 118;
-            uint32_t count1table_select_2_c1 : 1;
-            uint32_t scalefac_scale_2_c1 : 1;
-            uint32_t preflag_2_c1 : 1;
+        uint32_t count1table_select_2_c2 : 1;
+        uint32_t scalefac_scale_2_c2 : 1;
+        uint32_t preflag_2_c2 : 1;
 
-            uint32_t region1_count_2_c1 : 3;
-            uint32_t region0_count_2_c1 : 4;
-            uint32_t table_select_2_c1 : 15;
+        uint32_t region1_count_2_c2 : 3;
+        uint32_t region0_count_2_c2 : 4;
+        uint32_t table_select_2_c2 : 15;
 
-            uint32_t windows_switching_flag_2_c1 : 1;
-            uint32_t scalefac_compress_2_c1 : 4;
-            uint32_t global_gain_2_c1 : 8;
-            uint32_t big_values_2_c1 : 9;
-            uint32_t part2_3_length_2_c1 : 12;
+        uint32_t windows_switching_flag_2_c2 : 1;
+        uint32_t scalefac_compress_2_c2 : 4;
+        uint32_t global_gain_2_c2 : 8;
+        uint32_t big_values_2_c2 : 9;
+        uint32_t part2_3_length_2_c2 : 12;
 
-            uint32_t count1table_select_2_c2 : 1;
-            uint32_t scalefac_scale_2_c2 : 1;
-            uint32_t preflag_2_c2 : 1;
+        uint32_t count1table_select_2_c1 : 1;
+        uint32_t scalefac_scale_2_c1 : 1;
+        uint32_t preflag_2_c1 : 1;
 
-            uint32_t region1_count_2_c2 : 3;
-            uint32_t region0_count_2_c2 : 4;
-            uint32_t table_select_2_c2 : 15;
+        uint32_t region1_count_2_c1 : 3;
+        uint32_t region0_count_2_c1 : 4;
+        uint32_t table_select_2_c1 : 15;
 
-            uint32_t windows_switching_flag_2_c2 : 1;
-            uint32_t scalefac_compress_2_c2 : 4;
-            uint32_t global_gain_2_c2 : 8;
-            uint32_t big_values_2_c2 : 9;
-            uint32_t part2_3_length_2_c2 : 12;
+        uint32_t windows_switching_flag_2_c1 : 1;
+        uint32_t scalefac_compress_2_c1 : 4;
+        uint32_t global_gain_2_c1 : 8;
+        uint32_t big_values_2_c1 : 9;
+        uint32_t part2_3_length_2_c1 : 12;
 
-        //GranuleSideInfo granule_1 : 118;
-            uint32_t count1table_select_1_c1 : 1;
-            uint32_t scalefac_scale_1_c1 : 1;
-            uint32_t preflag_1_c1 : 1;
+        uint32_t count1table_select_1_c2 : 1;
+        uint32_t scalefac_scale_1_c2 : 1;
+        uint32_t preflag_1_c2 : 1;
 
-            uint32_t region1_count_1_c1 : 3;
-            uint32_t region0_count_1_c1 : 4;
-            uint32_t table_select_1_c1 : 15;
+        uint32_t region1_count_1_c2 : 3;
+        uint32_t region0_count_1_c2 : 4;
+        uint32_t table_select_1_c2 : 15;
 
-            uint32_t windows_switching_flag_1_c1 : 1;
-            uint32_t scalefac_compress_1_c1 : 4;
-            uint32_t global_gain_1_c1 : 8;
-            uint32_t big_values_1_c1 : 9;
-            uint32_t part2_3_length_1_c1 : 12;
+        uint32_t windows_switching_flag_1_c2 : 1;
+        uint32_t scalefac_compress_1_c2 : 4;
+        uint32_t global_gain_1_c2 : 8;
+        uint32_t big_values_1_c2 : 9;
+        uint32_t part2_3_length_1_c2 : 12;
 
-            uint32_t count1table_select_1_c2 : 1;
-            uint32_t scalefac_scale_1_c2 : 1;
-            uint32_t preflag_1_c2 : 1;
+        uint32_t count1table_select_1_c1 : 1;
+        uint32_t scalefac_scale_1_c1 : 1;
+        uint32_t preflag_1_c1 : 1;
 
-            uint32_t region1_count_1_c2 : 3;
-            uint32_t region0_count_1_c2 : 4;
-            uint32_t table_select_1_c2 : 15;
+        uint32_t region1_count_1_c1 : 3;
+        uint32_t region0_count_1_c1 : 4;
+        uint32_t table_select_1_c1 : 15;
 
-            uint32_t windows_switching_flag_1_c2 : 1;
-            uint32_t scalefac_compress_1_c2 : 4;
-            uint32_t global_gain_1_c2 : 8;
-            uint32_t big_values_1_c2 : 9;
-            uint32_t part2_3_length_1_c2 : 12;
+        uint32_t windows_switching_flag_1_c1 : 1;
+        uint32_t scalefac_compress_1_c1 : 4;
+        uint32_t global_gain_1_c1 : 8;
+        uint32_t big_values_1_c1 : 9;
+        uint32_t part2_3_length_1_c1 : 12;
 
         //Side Info Meta Data
         uint32_t scsfi : 8;
         uint32_t private_bits : 3;
         uint32_t main_data_begin : 9; // if 0, main data direct
-
-
 
         void printSideInfo() {
             printf("*******************************\n");
@@ -365,12 +309,6 @@ namespace mp3 {
             printf("\tbig_values 2: %d\n", big_values_2_c2);
             printf("\tpart2_3_length 2: %d\n", part2_3_length_2_c2);
         }
-
-//        void parseData(uint8_t* data) {
-//            main_data_begin = (data[4]  << 1) + (data[5] >> 7);
-//            private_bits = (data[5] << 1) >> 5;
-//            scsfi = (data[5] << 4) + (data[6] >> 4);
-//        }
     } __attribute__((packed));
 
     class MP3Frame {
