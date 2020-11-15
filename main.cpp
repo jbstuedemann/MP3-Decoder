@@ -10,11 +10,12 @@ int main(){
     uint8_t data [1000];
     ifs.read((char*)data, 1000);
 
-    io::audio::mp3::MP3Frame* mp3File = new io::audio::mp3::MP3Frame(data);
-    mp3File->header->printHeader();
-    mp3File->side_info->printSideInfo();
-    mp3File->side_info->printGranule_1();
-    mp3File->side_info->printGranule_2();
+    // IMPORTANT: SKIP THE ID3V2
+    io::audio::mp3::MP3Frame* mp3File = new io::audio::mp3::MP3Frame(data+70);
+
+    if(mp3File != nullptr){
+        printf("DONE\n");
+    }
 
     return 0;
 }

@@ -64,9 +64,8 @@ namespace mp3 {
     };
 
     // letters correspond to letters from here: http://mpgedit.org/mpgedit/mpeg_format/mpeghdr.htm
-    // IMPORTANT: reverse header bytes before copying data into this class
-    class MP3FrameHeader {
-    public:
+    // IMPORTANT: reverse header bytes before copying data into this struct
+    struct MP3FrameHeader {
         uint32_t emphasis : 2; // M
         uint32_t original : 1; // L
         uint32_t copyright : 1; // K
@@ -182,7 +181,7 @@ namespace mp3 {
     //     uint32_t subblock_gain : 10;
     // };
 
-    struct MP3SideInfo {
+    struct MP3SideInfoPrelim {
         uint32_t count1table_select_2_c2 : 1;
         uint32_t scalefac_scale_2_c2 : 1;
         uint32_t preflag_2_c2 : 1;
@@ -311,15 +310,37 @@ namespace mp3 {
         }
     } __attribute__((packed));
 
-    class MP3Frame {
-        uint32_t ref_count;
+    struct MP3SideInfo {
+        // Metadata
+        uint32_t scsfi; // 8 bits
+        uint32_t private_bits; // 3 bits
+        uint32_t main_data_begin; // 9 bits; if 0, main data directly follows side info, otherwise it's a negative offset from sync word
 
-    public:
-        MP3Frame(uint8_t* data);
-        ~MP3Frame();
+        // Actual Side info
+        // field[x][y] = field for granule x + 1, channel y + 1
+        uint32_t count1table_select[2][2];
+        uint32_t scalefac_scale[2][2];
+        uint32_t preflag[2][2];
 
+        uint32_t region1_count[2][2];
+        uint32_t region0_count[2][2];
+        uint32_t table_select[2][2];
+
+        uint32_t windows_switching_flag[2][2];
+        uint32_t scalefac_compress[2][2];
+        uint32_t global_gain[2][2];
+        uint32_t big_values[2][2];
+        uint32_t part2_3_length[2][2];
+
+        MP3SideInfo(MP3SideInfoPrelim* side_info_prelim); 
+    };
+
+    struct MP3Frame {
         MP3FrameHeader* header;
         MP3SideInfo* side_info;
+
+        MP3Frame(uint8_t* data);
+        ~MP3Frame();
     };
 }
 
