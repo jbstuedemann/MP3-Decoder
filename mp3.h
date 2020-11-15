@@ -182,7 +182,7 @@ namespace mp3 {
     //     uint32_t subblock_gain : 10;
     // };
 
-    struct MP3SideInfoPrelim {
+    struct MP3SideInfo {
         uint32_t count1table_select_2_c2 : 1;
         uint32_t scalefac_scale_2_c2 : 1;
         uint32_t preflag_2_c2 : 1;
@@ -311,39 +311,12 @@ namespace mp3 {
         }
     } __attribute__((packed));
 
-    struct MP3SideInfo {
-        // Metadata
-        uint32_t scsfi; // 8 bits
-        uint32_t private_bits; // 3 bits
-        uint32_t main_data_begin; // 9 bits; if 0, main data directly follows side info, otherwise it's a negative offset from sync word
-
-        // Side info
-        // field[x][y] = field for granule x + 1, channel y + 1
-        uint32_t count1table_select[2][2];
-        uint32_t scalefac_scale[2][2];
-        uint32_t preflag[2][2];
-
-        uint32_t region1_count[2][2];
-        uint32_t region0_count[2][2];
-        uint32_t table_select[2][2];
-
-        uint32_t windows_switching_flag[2][2];
-        uint32_t scalefac_compress[2][2];
-        uint32_t global_gain[2][2];
-        uint32_t big_values[2][2];
-        uint32_t part2_3_length[2][2];
-    };
-
     class MP3Frame {
         uint32_t ref_count;
 
     public:
-        int scalefacs[2][2][21];
-
         MP3Frame(uint8_t* data);
         ~MP3Frame();
-
-        void unpack_scalefacs(char* main_data, int granule, int channel);
 
         MP3FrameHeader* header;
         MP3SideInfo* side_info;
