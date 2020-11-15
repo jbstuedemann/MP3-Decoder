@@ -332,17 +332,23 @@ namespace mp3 {
         uint32_t big_values[2][2];
         uint32_t part2_3_length[2][2];
 
+        MP3SideInfo(){}
         MP3SideInfo(MP3SideInfoPrelim* side_info_prelim);
+        void resetData(MP3SideInfoPrelim* side_info_prelim);
 
         void printSideInfo();
     };
 
-    struct MP3Frame {
+    struct MP3FrameDecoder {
         MP3FrameHeader* header;
+        MP3SideInfoPrelim* side_info_prelim;
         MP3SideInfo* side_info;
+        double samples [2][2][576];
 
-        MP3Frame(uint8_t* data);
-        ~MP3Frame();
+        MP3FrameDecoder();
+        ~MP3FrameDecoder();
+
+        uint32_t readFrame(uint8_t* data);
     };
 }
 

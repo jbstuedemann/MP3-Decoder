@@ -5,8 +5,8 @@ EXECS = main
 
 all: $(EXECS)
 
-main: main.cpp mp3.h mp3.cc
-	$(CXX) $(CXXFLAGS) -o main main.cpp mp3.h mp3.cc
+main: main.cpp mp3.h mp3.cc tables.h
+	$(CXX) $(CXXFLAGS) -o main main.cpp mp3.h mp3.cc tables.h
 
 test: main
 	./main

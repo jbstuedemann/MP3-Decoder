@@ -1,5 +1,5 @@
-#ifndef INCLUDE_KERNEL_IO_HUFFMAN_SPEC_H_
-#define INCLUDE_KERNEL_IO_HUFFMAN_SPEC_H_
+#ifndef INCLUDE_KERNEL_IO_TABLES_H_
+#define INCLUDE_KERNEL_IO_TABLES_H_
 
 #include "stdint.h"
 
@@ -8,7 +8,52 @@ namespace io {
 namespace audio {
 
 namespace mp3 {
+    static const struct {
+        const unsigned long_32[22] {
+            4, 4, 4, 4, 4, 4, 6, 6, 8, 10, 12, 16, 20, 24, 30, 38, 46, 56, 68, 84, 102
+        };
+        const unsigned short_32[13] {
+            4, 4, 4, 4, 6, 8, 12, 16, 20, 26, 34, 42
+        };
+        const unsigned long_44[22] {
+            4, 4, 4, 4, 4, 4, 6, 6, 8, 8, 10, 12, 16, 20, 24, 28, 34, 42, 50, 54, 76
+        };
+        const unsigned short_44[13] {
+            4, 4, 4, 4, 6, 8, 10, 12, 14, 18, 22, 30
+        };
+        const unsigned long_48[22] {
+            4, 4, 4, 4, 4, 4, 6, 6, 6, 8, 10, 12, 16, 18, 22, 28, 34, 40, 46, 54, 54
+        };
+        const unsigned short_48[22] {
+            4, 4, 4, 4, 6, 6, 10, 12, 14, 16, 20, 26
+        };
+    } kBandWidthTable;
+    
+    const struct {
+        const unsigned long_32[23] {
+            0, 4, 8, 12, 16, 20, 24, 30, 36, 44, 54, 66, 82,
+            102, 126, 156, 194, 240, 296, 364, 448, 550, 576
+        };
+        const unsigned short_32[14] {
+            0, 4, 8, 12, 16, 22, 30, 42, 58, 78, 104, 138, 180, 192
+        };
+        const unsigned long_44[23] {
+            0, 4, 8, 12, 16, 20, 24, 30, 36, 44, 52, 62, 74,
+            90, 110, 134, 162, 196, 238, 288, 342, 418, 576
+        };
+        const unsigned short_44[14] {
+            0, 4, 8, 12, 16, 22, 30, 40, 52, 66, 84, 106, 136, 192
+        };
+        const unsigned long_48[23] {
+            0, 4, 8, 12, 16, 20, 24, 30, 36, 42, 50, 60, 72,
+            88, 106, 128, 156, 190, 230, 276, 330, 384, 576
+        };
+        const unsigned short_48[14] {
+            0, 4, 8, 12, 16, 22, 28, 38, 50, 64, 80, 100, 126, 192
+        };
+    } kBandIndexTable;
 
+    // kSlenTable[x][y] = slen(y+1) for scalefac_compress = x
     const uint32_t kSlenTable [16][2] = {
             {0, 0},
             {0, 1},
@@ -152,4 +197,4 @@ const char* kHuffmanTableCodes [34][256] = {
 
 }
 
-#endif  // INCLUDE_KERNEL_IO_HUFFMAN_SPEC_H_
+#endif  // INCLUDE_KERNEL_IO_TABLES_H_
