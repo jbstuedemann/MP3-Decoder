@@ -25,11 +25,12 @@ namespace mp3 {
         printf("\n");
 
         header->printHeader();
-        side_info_prelim->printSideInfo();
-        side_info_prelim->printGranule_1();
-        side_info_prelim->printGranule_2();
+//        side_info_prelim->printSideInfo();
+//        side_info_prelim->printGranule_1();
+//        side_info_prelim->printGranule_2();
 
         side_info = new MP3SideInfo(side_info_prelim);
+        side_info->printSideInfo();
         free(side_info_prelim);
     }
 
@@ -87,6 +88,30 @@ namespace mp3 {
         part2_3_length[0][1] = side_info_prelim->part2_3_length_1_c2;
         part2_3_length[1][0] = side_info_prelim->part2_3_length_2_c1;
         part2_3_length[1][1] = side_info_prelim->part2_3_length_2_c2;
+    }
+
+    void MP3SideInfo::printSideInfo() {
+        printf("main_data_begin: %d\n", main_data_begin);
+        printf("private_bits: %d\n", private_bits);
+        printf("scsfi: %d\n", scsfi);
+
+        for (int i = 0; i < 2; i++) {
+            printf("************ GRANULE %d ***********\n", i + 1);
+            for (int j = 0; j < 2; j++) {
+                printf("************ CHANNEL %d ***********\n", j + 1);
+                printf("count1table_select: %d\n", count1table_select[i][j]);
+                printf("scalefac_scale: %d\n", scalefac_scale[i][j]);
+                printf("preflag: %d\n", preflag[i][j]);
+                printf("region1_count: %d\n", region1_count[i][j]);
+                printf("region0_count: %d\n", region0_count[i][j]);
+                printf("table_select: %d\n", table_select[i][j]);
+                printf("windows_switching_flag: %d\n", windows_switching_flag[i][j]);
+                printf("scalefac_compress: %d\n", scalefac_compress[i][j]);
+                printf("global_gain: %d\n", global_gain[i][j]);
+                printf("big_values: %d\n", big_values[i][j]);
+                printf("part2_3_length: %d\n", part2_3_length[i][j]);
+            }
+        }
     }
 
 }

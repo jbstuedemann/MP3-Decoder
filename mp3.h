@@ -332,7 +332,9 @@ namespace mp3 {
         uint32_t big_values[2][2];
         uint32_t part2_3_length[2][2];
 
-        MP3SideInfo(MP3SideInfoPrelim* side_info_prelim); 
+        MP3SideInfo(MP3SideInfoPrelim* side_info_prelim);
+
+        void printSideInfo();
     };
 
     struct MP3Frame {
