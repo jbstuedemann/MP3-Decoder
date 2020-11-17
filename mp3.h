@@ -4,6 +4,7 @@
 #include "stdint.h"
 #include "tables.h"
 #include "huffman.h"
+#include "audio_util.h"
 #include <iostream>
 #include <string.h>
 
@@ -331,6 +332,8 @@ namespace mp3 {
         uint32_t readFrame(uint8_t* data);
 
         void setBandTables();
+
+        void unpackScalefacs(unsigned char *data, uint32_t granule, uint32_t channel);
         void unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit);
 
     };

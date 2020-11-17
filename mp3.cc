@@ -1,5 +1,4 @@
 #include "mp3.h"
-#include "huffman.h"
 
 namespace io {
 
@@ -344,6 +343,41 @@ namespace mp3 {
                 printf("global_gain: %d\n", global_gain[i][j]);
                 printf("big_values: %d\n", big_values[i][j]);
                 printf("part2_3_length: %d\n", part2_3_length[i][j]);
+            }
+        }
+    }
+
+    // assumes data[0] is the first byte of the scalefac information
+    // assumes all blocks are long
+    void MP3FrameDecoder::unpackScalefacs(unsigned char *data, uint32_t granule, uint32_t channel) {
+        auto slen = kSlenTable[side_info->scalefac_compress[granule][channel]];
+        int byte = 0;
+        int bit = 0;
+        if (granule == 0) {
+            for (int i = 0; i < 21; i++) {
+                if (i < 11) {
+                    scalefacs[granule][channel][i] = readBitsInc(data, &byte, &bit, slen[0]);
+                } else {
+                    scalefacs[granule][channel][i] = readBitsInc(data, &byte, &bit, slen[1]);
+                }
+            }
+        } else {
+            auto scsfi = side_info->scsfi;
+            for (int i = 0; i < 21; i++) {
+                uint32_t mask = getMask(i, channel);
+                if (i < 11) {
+                    if (scsfi & mask) {
+                        scalefacs[granule][channel][i] = scalefacs[0][channel][i];
+                    } else {
+                        scalefacs[granule][channel][i] = readBitsInc(data, &byte, &bit, slen[0]);
+                    }
+                } else {
+                    if (scsfi & mask) {
+                        scalefacs[granule][channel][i] = scalefacs[0][channel][i];
+                    } else {
+                        scalefacs[granule][channel][i] = readBitsInc(data, &byte, &bit, slen[1]);
+                    }
+                }
             }
         }
     }
