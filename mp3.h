@@ -327,6 +327,7 @@ namespace mp3 {
         uint32_t table_select[2][2];
 
         uint32_t windows_switching_flag[2][2];
+        uint32_t block_type[2][2];
         uint32_t scalefac_compress[2][2];
         uint32_t global_gain[2][2];
         uint32_t big_values[2][2];
@@ -349,6 +350,7 @@ namespace mp3 {
         ~MP3FrameDecoder();
 
         uint32_t readFrame(uint8_t* data);
+        void unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit);
     };
 }
 

@@ -1,4 +1,6 @@
 #include "mp3.h"
+#include "huffman.h"
+#include "tables.h"
 
 namespace io {
 
@@ -42,11 +44,9 @@ namespace mp3 {
         free(side_info);
     }
 
-    /*
     void MP3FrameDecoder::unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit) {
         int sample = 0;
         int table_num;
-        const unsigned *table;
 
         for (int i = 0; i < 576; i++) {
             samples[gr][ch][i] = 0;
@@ -55,12 +55,12 @@ namespace mp3 {
         // get the big value region boundaries
         int region0;
         int region1;
-        if (window_switching[gr][ch] && block_type[gr][ch] == 2) {
+        if (side_info->windows_switching_flag[gr][ch] && side_info->block_type[gr][ch] == 2) {
             region0 = 36;
             region1 = 576;
         } else {
-            region0 = band_index.long_win[region0_count[gr][ch] + 1];
-            region1 = band_index.long_win[region0_count[gr][ch] + 1 + region1_count[gr][ch] + 1];
+            region0 = band_index.long_win[side_info->region0_count[gr][ch] + 1];
+            region1 = band_index.long_win[side_info->region0_count[gr][ch] + 1 + side_info->region1_count[gr][ch] + 1];
         }
 
         // get the samples in the big value region
@@ -121,7 +121,7 @@ namespace mp3 {
             int values[4];
 
             // flip bits
-            if (count1table_select[gr][ch] == 1) {
+            if (side_info->count1table_select[gr][ch] == 1) {
                 unsigned bit_sample = get_bits_inc(main_data, &bit, 4);
                 values[0] = (bit_sample & 0x08) > 0 ? 0 : 1;
                 values[1] = (bit_sample & 0x04) > 0 ? 0 : 1;
@@ -130,13 +130,13 @@ namespace mp3 {
             } else {
                 unsigned bit_sample = get_bits(main_data, bit, bit + 32);
                 for (int entry = 0; entry < 16; entry++) {
-                    unsigned value = quad_table_1.hcod[entry];
-                    unsigned size = quad_table_1.hlen[entry];
+                    unsigned value = kQuadTable.hcod[entry];
+                    unsigned size = kQuadTable.hlen[entry];
 
                     if (value >> (32 - size) == bit_sample >> (32 - size)) {
                         bit += size;
                         for (int i = 0; i < 4; i++)
-                            values[i] = (int)quad_table_1.value[entry][i];
+                            values[i] = (int)kQuadTable.value[entry][i];
                         break;
                     }
                 }
@@ -159,7 +159,6 @@ namespace mp3 {
             samples[gr][ch][sample] = 0;
         }
     }
-    */
 
     MP3SideInfo::MP3SideInfo(MP3SideInfoPrelim* side_info_prelim) {
         main_data_begin = side_info_prelim->main_data_begin;

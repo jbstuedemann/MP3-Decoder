@@ -10,9 +10,8 @@ namespace audio {
 namespace mp3 {
 
     class HuffmanTreeNode {
-        uint32_t ref_count;
     public:
-        HuffmanTreeNode* children;
+        HuffmanTreeNode** children;
         int* sample_values;
         bool is_leaf;
 
@@ -21,7 +20,6 @@ namespace mp3 {
     };
 
     class HuffmanTree {
-        uint32_t ref_count;
     public:
         uint32_t table_num;
         uint32_t linbits;
@@ -29,6 +27,8 @@ namespace mp3 {
 
         HuffmanTree(uint32_t tn);
         ~HuffmanTree();
+
+        int* getSampleValues(char* buffer);
     };
 
 }

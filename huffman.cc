@@ -1,5 +1,5 @@
 #include "mp3.h"
-#include "huffman_spec.h"
+#include "tables.h"
 #include "huffman.h"
 
 namespace io {
@@ -12,7 +12,7 @@ namespace mp3 {
         return kHuffmanTableMetadata[tn][0] * kHuffmanTableMetadata[tn][1];
     }
 
-    HuffmanTree::HuffmanTree(uint32_t tn) : ref_count(0) {
+    HuffmanTree::HuffmanTree(uint32_t tn) {
         table_num = tn;
         linbits = kHuffmanTableMetadata[tn][2];
         root = new HuffmanTreeNode();
@@ -33,19 +33,36 @@ namespace mp3 {
         }
     }
 
-    HuffmanTree::~HuffmanTree() {
-        root = nullptr;
+    void huffmanRecursiveDelete(HuffmanTreeNode* curr) {
+        for (int i = 0; i < 2; i++) {
+            if (curr->children[i] != nullptr) {
+                huffmanRecursiveDelete(curr->children[i]);
+            }
+        }
+        delete curr;
     }
 
-    HuffmanTreeNode::HuffmanTreeNode() : ref_count(0), is_leaf(false) {
-        children = new HuffmanTreeNode[2];
+    HuffmanTree::~HuffmanTree() {
+        huffmanRecursiveDelete(root);
+    }
+
+    int* HuffmanTree::getSampleValues(char* buffer) {
+        HuffmanTreeNode* curr = root;
+        while (!curr->is_leaf) {
+            curr = curr->children[buffer[0]-'0'];
+            buffer++;
+        }
+        return curr->sample_values;
+    }
+
+    HuffmanTreeNode::HuffmanTreeNode() : is_leaf(false) {
+        children = new HuffmanTreeNode*[2];
+        children[0] = children[1] = nullptr; 
         sample_values = new int[2];
-        sample_values[0] = -1;
-        sample_values[1] = -1;
+        sample_values[0] = sample_values[1] = -1;
     }
 
     HuffmanTreeNode::~HuffmanTreeNode() {
-        children[0] = children[1] = nullptr;
         free(children);
         free(sample_values);
     }
