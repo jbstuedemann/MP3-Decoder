@@ -1,6 +1,6 @@
-#include "mp3.h"
-#include "tables.h"
 #include "huffman.h"
+#include "tables.h"
+#include <cstdlib>
 
 namespace io {
 

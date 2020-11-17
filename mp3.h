@@ -2,6 +2,8 @@
 #define INCLUDE_KERNEL_IO_MP3_H_
 
 #include "stdint.h"
+#include "tables.h"
+#include "huffman.h"
 #include <iostream>
 #include <string.h>
 
@@ -27,42 +29,6 @@ namespace mp3 {
         kLayer1,
     };
     
-    // All values are in kbps
-    // Column 0: V1, L1
-    // Column 1: V1, L2
-    // Column 2: V1, L3
-    // Column 3: V2, L1
-    // Column 4: V2, L2, L3
-    const uint32_t kBitRates [16][5] = {
-            {0, 0, 0, 0, 0},
-            {32, 32, 32, 32, 8},
-            {64, 48, 40, 48, 16},
-            {96, 56, 48, 56, 24},
-            {28, 64, 56, 64, 32},
-            {160, 80, 64, 80, 40},
-            {192, 96, 80, 96, 48},
-            {224, 112, 96, 112, 56},
-            {256, 128, 112, 128, 64},
-            {288, 160, 128, 144, 80},
-            {320, 192, 160, 160, 96},
-            {352, 224, 192, 176, 112},
-            {384, 256, 224, 192, 128},
-            {416, 320, 256, 224, 144},
-            {448, 384, 320, 256, 160},
-            {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}
-    };
-
-    // All values are in Hz
-    // Column 0: V1
-    // Column 1: V2
-    // Column 3: V2.5
-    const uint32_t kSamplingRates [4][3] = {
-            {44100, 22050, 11025},
-            {48000, 24000, 12000},
-            {32000, 16000, 8000},
-            {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}
-    };
-
     // letters correspond to letters from here: http://mpgedit.org/mpgedit/mpeg_format/mpeghdr.htm
     // IMPORTANT: reverse header bytes before copying data into this struct
     struct MP3FrameHeader {
@@ -344,6 +310,18 @@ namespace mp3 {
         MP3FrameHeader* header;
         MP3SideInfoPrelim* side_info_prelim;
         MP3SideInfo* side_info;
+
+        HuffmanTree* tables [kNumHuffmanTables];
+
+        struct {
+            const unsigned *long_win;
+            const unsigned *short_win;
+        } band_index;
+        struct {
+            const unsigned *long_win;
+            const unsigned *short_win;
+        } band_width;
+
         double samples [2][2][576];
         int scalefacs [2][2][22];
 
@@ -351,10 +329,10 @@ namespace mp3 {
         ~MP3FrameDecoder();
 
         uint32_t readFrame(uint8_t* data);
-        
+
+        void setBandTables();
         void unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit);
-        
-        void unpackScalefacs(char *data, uint32_t granule, uint32_t channel);
+
     };
 }
 

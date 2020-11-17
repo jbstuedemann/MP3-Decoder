@@ -8,6 +8,42 @@ namespace io {
 namespace audio {
 
 namespace mp3 {
+    // All values are in kbps
+    // Column 0: V1, L1
+    // Column 1: V1, L2
+    // Column 2: V1, L3
+    // Column 3: V2, L1
+    // Column 4: V2, L2, L3
+    static const uint32_t kBitRates [16][5] = {
+            {0, 0, 0, 0, 0},
+            {32, 32, 32, 32, 8},
+            {64, 48, 40, 48, 16},
+            {96, 56, 48, 56, 24},
+            {28, 64, 56, 64, 32},
+            {160, 80, 64, 80, 40},
+            {192, 96, 80, 96, 48},
+            {224, 112, 96, 112, 56},
+            {256, 128, 112, 128, 64},
+            {288, 160, 128, 144, 80},
+            {320, 192, 160, 160, 96},
+            {352, 224, 192, 176, 112},
+            {384, 256, 224, 192, 128},
+            {416, 320, 256, 224, 144},
+            {448, 384, 320, 256, 160},
+            {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}
+    };
+
+    // All values are in Hz
+    // Column 0: V1
+    // Column 1: V2
+    // Column 3: V2.5
+    const uint32_t kSamplingRates [4][3] = {
+            {44100, 22050, 11025},
+            {48000, 24000, 12000},
+            {32000, 16000, 8000},
+            {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}
+    };
+
     static const struct {
         const unsigned long_32[22] {
             4, 4, 4, 4, 4, 4, 6, 6, 8, 10, 12, 16, 20, 24, 30, 38, 46, 56, 68, 84, 102
@@ -29,7 +65,7 @@ namespace mp3 {
         };
     } kBandWidthTable;
     
-    const struct {
+    static const struct {
         const unsigned long_32[23] {
             0, 4, 8, 12, 16, 20, 24, 30, 36, 44, 54, 66, 82,
             102, 126, 156, 194, 240, 296, 364, 448, 550, 576
@@ -53,7 +89,7 @@ namespace mp3 {
         };
     } kBandIndexTable;
 
-    const struct {
+    static const struct {
         const unsigned char value[16][4] {
             {0, 0, 0, 0}, {0, 0, 0, 1}, {0, 0, 1, 0}, {0, 0, 1, 1}, {0, 1, 0, 0}, {0, 1, 0, 1},
             {0, 1, 1, 0}, {0, 1, 1, 1}, {1, 0, 0, 0}, {1, 0, 0, 1}, {1, 0, 1, 0}, {1, 0, 1, 1},
@@ -68,7 +104,7 @@ namespace mp3 {
 
 
     // kSlenTable[x][y] = slen(y+1) for scalefac_compress = x
-    const uint32_t kSlenTable [16][2] = {
+    static const uint32_t kSlenTable [16][2] = {
             {0, 0},
             {0, 1},
             {0, 2},
@@ -87,10 +123,12 @@ namespace mp3 {
             {4, 3}
     };
 
+const uint32_t kNumHuffmanTables = 34;
+
 // kHuffmanTableMetadata[x][0] = rows in xth table (xlen)
 // kHuffmanTableMetadata[x][1] = cols in xth table (ylen)
 // kHuffmanTableMetadata[x][2] = linbits for xth table
-const uint32_t kHuffmanTableMetadata [34][3] = {
+static const uint32_t kHuffmanTableMetadata [34][3] = {
 	{0, 0, 0},
 	{2, 2, 0},
 	{3, 3, 0},
@@ -129,7 +167,7 @@ const uint32_t kHuffmanTableMetadata [34][3] = {
 
 // let xlen = kHuffmanTableMetadata[x][0], ylen = kHuffmanTableMetadata[x][1]
 // sample pair (x, y) = kHuffmanTablePairs[table index][pair index]
-const uint32_t kHuffmanTablePairs [34][256][2] = {
+static const uint32_t kHuffmanTablePairs [34][256][2] = {
 	{},
 	{{0, 0}, {0, 1}, {1, 0}, {1, 1}},
 	{{0, 0}, {0, 1}, {0, 2}, {1, 0}, {1, 1}, {1, 2}, {2, 0}, {2, 1}, {2, 2}},
@@ -168,7 +206,7 @@ const uint32_t kHuffmanTablePairs [34][256][2] = {
 
 // kHuffmanTableCodes[x] = path along a Huffman tree to a leaf containing sample pair values
 
-const char* kHuffmanTableCodes [34][256] = {
+static const char* const kHuffmanTableCodes [34][256] = {
 	{},
 	{"1", "001", "01", "000"},
 	{"1", "010", "000001", "011", "001", "00001", "00011", "00010", "000000"},

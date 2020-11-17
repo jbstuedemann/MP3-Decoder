@@ -1,21 +1,68 @@
 #include "mp3.h"
 #include "huffman.h"
-#include "tables.h"
+
 namespace io {
 
 namespace audio {
 
 namespace mp3 {
+    uint32_t getBits(uint8_t* buffer, int start_bit, int end_bit) {
+        int start_byte = 0;
+        int end_byte = 0;
+
+        start_byte = start_bit >> 3;
+        end_byte = end_bit >> 3;
+        start_bit = start_bit % 8;
+        end_bit = end_bit % 8;
+
+        // get the bits
+        uint32_t result = ((uint32_t)buffer[start_byte] << (32 - (8 - start_bit))) >> (32 - (8 - start_bit));
+
+        if (start_byte != end_byte) {
+            while (++start_byte != end_byte) {
+                result <<= 8;
+                result += buffer[start_byte];
+            }
+            result <<= end_bit;
+            result += buffer[end_byte] >> (8 - end_bit);
+        } else if (end_bit != 8) {
+            result >>= (8 - end_bit); 
+        }
+
+        return result;
+    }
+
+    uint32_t getBitsInc(uint8_t* buffer, int* offset, int count) {
+        uint32_t result = getBits(buffer, *offset, *offset + count);
+        *offset += count;
+        return result;
+    }
+
     MP3FrameDecoder::MP3FrameDecoder() {
         header = new MP3FrameHeader{};
         side_info_prelim = new MP3SideInfoPrelim{};
         side_info = new MP3SideInfo{};
+        for (uint32_t i = 0; i < kNumHuffmanTables; i++) {
+            tables[i] = new HuffmanTree(i);
+        }
+    }
+
+    MP3FrameDecoder::~MP3FrameDecoder() {
+        free(header);
+        free(side_info_prelim);
+        free(side_info);
+        for (uint32_t i = 0; i < kNumHuffmanTables; i++) {
+            free(tables[i]);
+        }
     }
 
     // data points to the start of the frame header
     uint32_t MP3FrameDecoder::readFrame(uint8_t* data) {
         // load the header data
-        for(int i = 0; i < 4; i++) ((uint8_t*)header)[i] = data[3-i];
+        for (int i = 0; i < 4; i++) {
+            ((uint8_t*)header)[i] = data[3-i]; 
+        }
+        setBandTables();
         data += 4;
 
         // skip the CRC (if protection_bit is 0)
@@ -36,16 +83,34 @@ namespace mp3 {
 
         return header->frameLength();
     }
-
-    MP3FrameDecoder::~MP3FrameDecoder() {
-        free(header);
-        free(side_info_prelim);
-        free(side_info);
+    
+    void MP3FrameDecoder::setBandTables() {
+        switch (header->getSamplingRate()) {
+            case 32000:
+                band_index.short_win = kBandIndexTable.short_32;
+                band_width.short_win = kBandWidthTable.short_32;
+                band_index.long_win = kBandIndexTable.long_32;
+                band_width.long_win = kBandWidthTable.long_32;
+                break;
+            case 44100:
+                band_index.short_win = kBandIndexTable.short_44;
+                band_width.short_win = kBandWidthTable.short_44;
+                band_index.long_win = kBandIndexTable.long_44;
+                band_width.long_win = kBandWidthTable.long_44;
+                break;
+            case 48000:
+                band_index.short_win = kBandIndexTable.short_48;
+                band_width.short_win = kBandWidthTable.short_48;
+                band_index.long_win = kBandIndexTable.long_48;
+                band_width.long_win = kBandWidthTable.long_48;
+                break;
+        }
     }
 
     void MP3FrameDecoder::unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit) {
         int sample = 0;
         int table_num;
+        HuffmanTree* table = nullptr;
 
         for (int i = 0; i < 576; i++) {
             samples[gr][ch][i] = 0;
@@ -64,17 +129,15 @@ namespace mp3 {
 
         // get the samples in the big value region
         // IMPORTANT: each entry in the Huffman table yields two samples
-        for (; sample < big_value[gr][ch] * 2; sample += 2) {
+        for (; sample < (int)side_info->big_values[gr][ch] * 2; sample += 2) {
             if (sample < region0) {
-                table_num = table_select[gr][ch][0];
-                table = big_value_table[table_num];
+                table_num = side_info->table_select[gr][ch][0];
             } else if (sample < region1) {
-                table_num = table_select[gr][ch][1];
-                table = big_value_table[table_num];
+                table_num = side_info->table_select[gr][ch][1];
             } else {
-                table_num = table_select[gr][ch][2];
-                table = big_value_table[table_num];
+                table_num = side_info->table_select[gr][ch][2];
             }
+            table = tables[table_num];
 
             if (table_num == 0) {
                 samples[gr][ch][sample] = 0;
@@ -82,7 +145,7 @@ namespace mp3 {
             }
 
             bool repeat = true;
-            unsigned bit_sample = get_bits(main_data, bit, bit + 32);
+            unsigned bit_sample = getBits(main_data, bit, bit + 32);
 
             // use the Huffman table and find a matching bit pattern
             for (int row = 0; row < big_value_max[table_num] && repeat; row++)
@@ -99,12 +162,12 @@ namespace mp3 {
                             // linbits extends the sample's size if needed
                             int linbit = 0;
                             if (big_value_linbit[table_num] != 0 && values[i] == big_value_max[table_num] - 1)
-                                linbit = (int)get_bits_inc(main_data, &bit, big_value_linbit[table_num]);
+                                linbit = (int)getBitsInc(main_data, &bit, big_value_linbit[table_num]);
 
                             // if the sample is negative or positive.
                             int sign = 1;
                             if (values[i] > 0)
-                                sign = get_bits_inc(main_data, &bit, 1) ? -1 : 1;
+                                sign = getBitsInc(main_data, &bit, 1) ? -1 : 1;
 
                             samples[gr][ch][sample + i] = (float)(sign * (values[i] + linbit));
                         }
@@ -121,13 +184,13 @@ namespace mp3 {
 
             // flip bits
             if (side_info->count1table_select[gr][ch] == 1) {
-                unsigned bit_sample = get_bits_inc(main_data, &bit, 4);
+                unsigned bit_sample = getBitsInc(main_data, &bit, 4);
                 values[0] = (bit_sample & 0x08) > 0 ? 0 : 1;
                 values[1] = (bit_sample & 0x04) > 0 ? 0 : 1;
                 values[2] = (bit_sample & 0x02) > 0 ? 0 : 1;
                 values[3] = (bit_sample & 0x01) > 0 ? 0 : 1;
             } else {
-                unsigned bit_sample = get_bits(main_data, bit, bit + 32);
+                unsigned bit_sample = getBits(main_data, bit, bit + 32);
                 for (int entry = 0; entry < 16; entry++) {
                     unsigned value = kQuadTable.hcod[entry];
                     unsigned size = kQuadTable.hlen[entry];
@@ -143,7 +206,7 @@ namespace mp3 {
 
             // get the sign bit
             for (int i = 0; i < 4; i++) {
-                if (values[i] > 0 && get_bits_inc(main_data, &bit, 1) == 1) {
+                if (values[i] > 0 && getBitsInc(main_data, &bit, 1) == 1) {
                     values[i] = -values[i];
                 }
             }
@@ -281,85 +344,6 @@ namespace mp3 {
                 printf("global_gain: %d\n", global_gain[i][j]);
                 printf("big_values: %d\n", big_values[i][j]);
                 printf("part2_3_length: %d\n", part2_3_length[i][j]);
-            }
-        }
-    }
-
-    uint32_t min(uint32_t a, uint32_t b) {
-        if (a > b) {
-            return b;
-        }
-
-        return a;
-    }
-
-    // assumes num_bits <= 32
-    // first bit is bit 0, first byte is byte 0
-    uint32_t read_bits(char* data, int byte, int bit, int num_bits) {
-        uint32_t output = 0;
-        while (true) {
-            if (num_bits <= 8 - bit) {
-                return (output << num_bits) + ((data[byte] << bit) >> (8 - num_bits));
-            }
-
-            output = (output << (8 - bit)) + (data[byte] << bit) >> bit;
-            num_bits -= 8 - bit;
-            bit = 0;
-            byte++;
-        }
-
-        return output;
-    }
-
-    uint32_t get_mask(uint32_t scalefac_band, uint32_t channel) {
-        uint32_t mask = 0;
-        if (scalefac_band < 6) {
-            mask = 0b10000000;
-        } else if (scalefac_band < 11) {
-            mask = 0b01000000;
-        } else if (scalefac_band < 16) {
-            mask = 0b00100000;
-        } else {
-            mask = 0b00010000;
-        }
-
-        if (channel != 0) {
-            mask >> 4;
-        }
-
-        return mask;
-    }
-
-    // assumes data[0] is the first byte of the scalefac information
-    // assumes all blocks are long
-    void MP3FrameDecoder::unpack_scalefacs(char *data, uint32_t granule, uint32_t channel) {
-        auto slen = kSlenTable[side_info->scalefac_compress[granule][channel]];
-        uint32_t bits_read = 0;
-        if (granule == 0) {
-            for (int i = 0; i < 21; i++) {
-                if (i < 11) {
-                    scalefacs[granule][channel][i] = read_bits(data, bits_read >> 3, bits_read % 8, slen[0]);
-                } else {
-                    scalefacs[granule][channel][i] = read_bits(data, bits_read >> 3, bits_read % 8, slen[1]);
-                }
-            }
-        } else {
-            auto scsfi = side_info->scsfi;
-            for (int i = 0; i < 21; i++) {
-                uint32_t mask = get_mask(i, channel);
-                if (i < 11) {
-                    if (scsfi & mask) {
-                        scalefacs[granule][channel][i] = scalefacs[0][channel][i];
-                    } else {
-                        scalefacs[granule][channel][i] = read_bits(data, bits_read >> 3, bits_read % 8, slen[0]);
-                    }
-                } else {
-                    if (scsfi & mask) {
-                        scalefacs[granule][channel][i] = scalefacs[0][channel][i];
-                    } else {
-                        scalefacs[granule][channel][i] = read_bits(data, bits_read >> 3, bits_read % 8, slen[1]);
-                    }
-                }
             }
         }
     }
