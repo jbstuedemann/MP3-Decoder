@@ -345,12 +345,16 @@ namespace mp3 {
         MP3SideInfoPrelim* side_info_prelim;
         MP3SideInfo* side_info;
         double samples [2][2][576];
+        int scalefacs [2][2][22];
 
         MP3FrameDecoder();
         ~MP3FrameDecoder();
 
         uint32_t readFrame(uint8_t* data);
+        
         void unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit);
+        
+        void unpackScalefacs(char *data, uint32_t granule, uint32_t channel);
     };
 }
 

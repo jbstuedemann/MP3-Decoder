@@ -1,7 +1,6 @@
 #include "mp3.h"
 #include "huffman.h"
 #include "tables.h"
-
 namespace io {
 
 namespace audio {
@@ -282,6 +281,85 @@ namespace mp3 {
                 printf("global_gain: %d\n", global_gain[i][j]);
                 printf("big_values: %d\n", big_values[i][j]);
                 printf("part2_3_length: %d\n", part2_3_length[i][j]);
+            }
+        }
+    }
+
+    uint32_t min(uint32_t a, uint32_t b) {
+        if (a > b) {
+            return b;
+        }
+
+        return a;
+    }
+
+    // assumes num_bits <= 32
+    // first bit is bit 0, first byte is byte 0
+    uint32_t read_bits(char* data, int byte, int bit, int num_bits) {
+        uint32_t output = 0;
+        while (true) {
+            if (num_bits <= 8 - bit) {
+                return (output << num_bits) + ((data[byte] << bit) >> (8 - num_bits));
+            }
+
+            output = (output << (8 - bit)) + (data[byte] << bit) >> bit;
+            num_bits -= 8 - bit;
+            bit = 0;
+            byte++;
+        }
+
+        return output;
+    }
+
+    uint32_t get_mask(uint32_t scalefac_band, uint32_t channel) {
+        uint32_t mask = 0;
+        if (scalefac_band < 6) {
+            mask = 0b10000000;
+        } else if (scalefac_band < 11) {
+            mask = 0b01000000;
+        } else if (scalefac_band < 16) {
+            mask = 0b00100000;
+        } else {
+            mask = 0b00010000;
+        }
+
+        if (channel != 0) {
+            mask >> 4;
+        }
+
+        return mask;
+    }
+
+    // assumes data[0] is the first byte of the scalefac information
+    // assumes all blocks are long
+    void MP3FrameDecoder::unpack_scalefacs(char *data, uint32_t granule, uint32_t channel) {
+        auto slen = kSlenTable[side_info->scalefac_compress[granule][channel]];
+        uint32_t bits_read = 0;
+        if (granule == 0) {
+            for (int i = 0; i < 21; i++) {
+                if (i < 11) {
+                    scalefacs[granule][channel][i] = read_bits(data, bits_read >> 3, bits_read % 8, slen[0]);
+                } else {
+                    scalefacs[granule][channel][i] = read_bits(data, bits_read >> 3, bits_read % 8, slen[1]);
+                }
+            }
+        } else {
+            auto scsfi = side_info->scsfi;
+            for (int i = 0; i < 21; i++) {
+                uint32_t mask = get_mask(i, channel);
+                if (i < 11) {
+                    if (scsfi & mask) {
+                        scalefacs[granule][channel][i] = scalefacs[0][channel][i];
+                    } else {
+                        scalefacs[granule][channel][i] = read_bits(data, bits_read >> 3, bits_read % 8, slen[0]);
+                    }
+                } else {
+                    if (scsfi & mask) {
+                        scalefacs[granule][channel][i] = scalefacs[0][channel][i];
+                    } else {
+                        scalefacs[granule][channel][i] = read_bits(data, bits_read >> 3, bits_read % 8, slen[1]);
+                    }
+                }
             }
         }
     }
