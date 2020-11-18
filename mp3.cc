@@ -161,6 +161,48 @@ namespace mp3 {
     }
     */
 
+    //Must load side_info and header first
+    void MP3MainDataDecoder::readMainData(uint32_t frame_number) {
+        uint32_t main_data_ind = side_info->main_data_begin;
+        uint32_t offset = 0;
+        if (header->protection_bit == 0)
+            offset += 2;
+
+        if (main_data_ind == 0) {
+            main_data[frame_number] = (uint8_t*) malloc(header->frameLength() - offset);
+            memcpy(main_data[frame_number], data + offset, header->frameLength() - offset);
+        }
+        else {
+            int start = 0;
+            for (int i = 0; i < prev_frames; i++) {
+                start += prev_frame_sizes[i] - offset;
+                if (side_info->main_data_begin < start) {
+                    int start_offset = side_info->main_data_begin + i * offset;
+                    int data_offset = 0;
+                    int* data_segment = new int[prev_frames];
+                    data_segment[i] = side_info->main_data_begin;
+                    for (int j = 0; i <= i-1; j++) {
+                        data_segment[j] = prev_frame_sizes[j] - offset;
+                        data_segment[i] -= data_segment[j];
+                    }
+                    main_data[frame_number] = (uint8_t*) malloc(header->frameLength() - offset + side_info->main_data_begin);
+                    memcpy(main_data[frame_number], data - start_offset, data_segment[i]);
+                    start_offset -= (data_segment[i] + offset);
+                    data_offset += data_segment[i];
+                    for (int j = i-1; j >= 0; j--) {
+                        memcpy(&main_data[data_offset], data - start_offset, data_segment[i]);
+                        start_offset -= (data_segment[i] + offset);
+                        data_offset += data_segment[i];
+                    }
+                    memcpy(&main_data[side_info->main_data_begin], data + offset, header->frameLength() - offset);
+                    break;
+                }
+            }
+        }
+
+        prev_frames++;
+    }
+
     MP3SideInfo::MP3SideInfo(MP3SideInfoPrelim* side_info_prelim) {
         main_data_begin = side_info_prelim->main_data_begin;
         scsfi = side_info_prelim->scsfi;

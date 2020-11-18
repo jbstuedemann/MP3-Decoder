@@ -350,6 +350,24 @@ namespace mp3 {
 
         uint32_t readFrame(uint8_t* data);
     };
+
+    struct MP3MainDataDecoder : MP3FrameDecoder{
+        uint8_t* data;
+        uint8_t** main_data;
+        uint32_t prev_frames;
+        uint32_t* prev_frame_sizes;
+
+        MP3MainDataDecoder(uint8_t* data) : data(data), prev_frames(0) {
+            main_data = (uint8_t**) malloc(sizeof(uint8_t*) * 100);
+            prev_frame_sizes = (uint32_t*) malloc(sizeof(uint32_t) * 100);
+        }
+        ~MP3MainDataDecoder();
+
+        void readMainData(uint32_t frame_number);
+        uint8_t* getMainData(uint32_t frame_number) {
+            return main_data[frame_number];
+        }
+    };
 }
 
 }
