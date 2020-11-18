@@ -22,6 +22,33 @@ namespace mp3 {
         }
     }
 
+    void MP3FrameDecoder::postHeaderSetup() {
+        switch (header->getSamplingRate()) {
+            case 32000:
+                band_index.short_win = kBandIndexTable.short_32;
+                band_width.short_win = kBandWidthTable.short_32;
+                band_index.long_win = kBandIndexTable.long_32;
+                band_width.long_win = kBandWidthTable.long_32;
+                break;
+            case 44100:
+                band_index.short_win = kBandIndexTable.short_44;
+                band_width.short_win = kBandWidthTable.short_44;
+                band_index.long_win = kBandIndexTable.long_44;
+                band_width.long_win = kBandWidthTable.long_44;
+                break;
+            case 48000:
+                band_index.short_win = kBandIndexTable.short_48;
+                band_width.short_win = kBandWidthTable.short_48;
+                band_index.long_win = kBandIndexTable.long_48;
+                band_width.long_win = kBandWidthTable.long_48;
+                break;
+        }
+        for (int i = num_prev_frames-1; i > 0; i--) {
+            prev_frame_size[i] = prev_frame_size[i - 1];
+        }
+        prev_frame_size[0] = header->frameLength();
+    }
+
     // data points to the start of the frame header
     uint32_t MP3FrameDecoder::readFrame(uint8_t* data) {
         // store start of frame
@@ -31,7 +58,7 @@ namespace mp3 {
         for (int i = 0; i < 4; i++) {
             ((uint8_t*)header)[i] = data[3-i]; 
         }
-        setBandTables();
+        postHeaderSetup();
         data += 4;
 
         // skip the CRC (if protection_bit is 0)
@@ -39,9 +66,9 @@ namespace mp3 {
             data += 2;
         }
 
-        // process side info and TODO main data
+        // process side info and main data
         setSideInfo(data);
-        //setMainData(frame_start);
+        setMainData(frame_start);
 
 
         for(int i = 0; i < 32; i++) printf("%02x\t", data[i]);
@@ -50,6 +77,55 @@ namespace mp3 {
         side_info->printSideInfo();
 
         return header->frameLength();
+    }
+
+    void MP3FrameDecoder::setMainData(uint8_t* buffer) {
+        int constant = 36+2*(header->protection_bit == 0);
+        // put the main data in a separate buffer so that side info and header
+        // do not interfere; main_data_begin may be larger than the previous frame
+        // and does not include the size of side info and headers
+        uint32_t frame_size = header->frameLength();
+        if (side_info->main_data_begin == 0) {
+            main_data.setSize(frame_size - constant);
+            memcpy(&main_data[0], buffer + constant, frame_size - constant);
+        } else {
+            int bound = 0;
+            for (int frame = 0; frame < num_prev_frames; frame++) {
+                bound += prev_frame_size[frame] - constant;
+                if ((int)side_info->main_data_begin < bound) {
+                    int ptr_offset = side_info->main_data_begin + frame * constant;
+                    int buffer_offset = 0;
+
+                    int part[num_prev_frames];
+                    part[frame] = side_info->main_data_begin;
+                    for (int i = 0; i <= frame-1; i++) {
+                        part[i] = prev_frame_size[i] - constant;
+                        part[frame] -= part[i];
+                    }
+
+                    main_data.setSize(frame_size - constant + side_info->main_data_begin);
+                    memcpy(main_data.data(), buffer - ptr_offset, part[frame]);
+                    ptr_offset -= (part[frame] + constant);
+                    buffer_offset += part[frame];
+                    for (int i = frame-1; i >= 0; i--) {
+                        memcpy(&main_data[buffer_offset], buffer - ptr_offset, part[i]);
+                        ptr_offset -= (part[i] + constant);
+                        buffer_offset += part[i];
+                    }
+                    memcpy(&main_data[side_info->main_data_begin], buffer + constant, frame_size - constant);
+                    break;
+                }
+            }
+        }
+
+        int bit = 0;
+        for (int gr = 0; gr < 2; gr++)
+            for (uint32_t ch = 0; ch < header->channels(); ch++) {
+                int max_bit = bit + side_info->part2_3_length[gr][ch];
+                unpackScalefacs(main_data.data(), gr, ch, bit);
+                unpackSamples(main_data.data(), gr, ch, bit, max_bit);
+                bit = max_bit;
+            }
     }
 
     void MP3FrameDecoder::setSideInfo(uint8_t* buffer) {
@@ -129,29 +205,6 @@ namespace mp3 {
                 side_info->count1table_select[gr][ch] = (int)readBitsInc(buffer, &count, 1);
             }
     }
-    
-    void MP3FrameDecoder::setBandTables() {
-        switch (header->getSamplingRate()) {
-            case 32000:
-                band_index.short_win = kBandIndexTable.short_32;
-                band_width.short_win = kBandWidthTable.short_32;
-                band_index.long_win = kBandIndexTable.long_32;
-                band_width.long_win = kBandWidthTable.long_32;
-                break;
-            case 44100:
-                band_index.short_win = kBandIndexTable.short_44;
-                band_width.short_win = kBandWidthTable.short_44;
-                band_index.long_win = kBandIndexTable.long_44;
-                band_width.long_win = kBandWidthTable.long_44;
-                break;
-            case 48000:
-                band_index.short_win = kBandIndexTable.short_48;
-                band_width.short_win = kBandWidthTable.short_48;
-                band_index.long_win = kBandIndexTable.long_48;
-                band_width.long_win = kBandWidthTable.long_48;
-                break;
-        }
-    }
 
     void MP3FrameDecoder::unpackScalefacs(uint8_t* data, uint32_t granule, uint32_t channel, int &bit) {
         /*auto slen = kSlenTable[side_info->scalefac_compress[granule][channel]];
@@ -189,7 +242,7 @@ namespace mp3 {
     void MP3FrameDecoder::unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit) {
         int sample = 0;
         int table_num;
-        HuffmanTree* table = nullptr;
+        HuffmanTree* table;
 
         for (int i = 0; i < 576; i++) {
             samples[gr][ch][i] = 0;
