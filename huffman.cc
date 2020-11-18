@@ -46,11 +46,10 @@ namespace mp3 {
         huffmanRecursiveDelete(root);
     }
 
-    int* HuffmanTree::getSampleValues(char* buffer) {
+    int* HuffmanTree::getSampleValues(uint8_t* main_data, int* bit) {
         HuffmanTreeNode* curr = root;
         while (!curr->is_leaf) {
-            curr = curr->children[buffer[0]-'0'];
-            buffer++;
+            curr = curr->children[readBitsInc(main_data, bit, 1)];
         }
         return curr->sample_values;
     }

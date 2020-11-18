@@ -129,7 +129,7 @@ const uint32_t kNumHuffmanTables = 34;
 // kHuffmanTableMetadata[x][1] = cols in xth table (ylen)
 // kHuffmanTableMetadata[x][2] = linbits for xth table
 static const uint32_t kHuffmanTableMetadata [34][3] = {
-	{0, 0, 0},
+	{1, 1, 0},
 	{2, 2, 0},
 	{3, 3, 0},
 	{3, 3, 0},
@@ -168,7 +168,7 @@ static const uint32_t kHuffmanTableMetadata [34][3] = {
 // let xlen = kHuffmanTableMetadata[x][0], ylen = kHuffmanTableMetadata[x][1]
 // sample pair (x, y) = kHuffmanTablePairs[table index][pair index]
 static const uint32_t kHuffmanTablePairs [34][256][2] = {
-	{},
+	{{0, 0}},
 	{{0, 0}, {0, 1}, {1, 0}, {1, 1}},
 	{{0, 0}, {0, 1}, {0, 2}, {1, 0}, {1, 1}, {1, 2}, {2, 0}, {2, 1}, {2, 2}},
 	{{0, 0}, {0, 1}, {0, 2}, {1, 0}, {1, 1}, {1, 2}, {2, 0}, {2, 1}, {2, 2}},
@@ -207,7 +207,7 @@ static const uint32_t kHuffmanTablePairs [34][256][2] = {
 // kHuffmanTableCodes[x] = path along a Huffman tree to a leaf containing sample pair values
 
 static const char* const kHuffmanTableCodes [34][256] = {
-	{},
+	{"0"},
 	{"1", "001", "01", "000"},
 	{"1", "010", "000001", "011", "001", "00001", "00011", "00010", "000000"},
 	{"11", "10", "000001", "001", "01", "00001", "00011", "00010", "000000"},

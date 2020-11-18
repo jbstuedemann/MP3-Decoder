@@ -2,6 +2,7 @@
 #define INCLUDE_KERNEL_IO_HUFFMAN_H_
 
 #include "stdint.h"
+#include "audio_util.h"
 
 namespace io {
 
@@ -28,7 +29,7 @@ namespace mp3 {
         HuffmanTree(uint32_t tn);
         ~HuffmanTree();
 
-        int* getSampleValues(char* buffer);
+        int* getSampleValues(uint8_t* main_data, int* bit);
     };
 
 }

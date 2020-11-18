@@ -1,34 +1,29 @@
+#include "audio_util.h"
 
 namespace io {
 
 namespace audio {
 
 namespace mp3 {
-    inline uint32_t min(uint32_t a, uint32_t b) {
-        return (a < b : a ? b);
-    }
-
-    inline uint32_t max(uint32_t a, uint32_t b) {
-        return (a > b : a ? b);
-    }
+    
 
     // assumes num_bits <= 32
     // first bit is bit 0, first byte is byte 0
-    uint32_t readBitsInc(unsigned char* data, int* byte, int* bit, int num_bits) {
+    uint32_t readBitsInc(uint8_t* data, int* byte, int* bit, int num_bits) {
         if (num_bits > 32) {
-            printf("NUM_BITS > 32\n");
-            exit(1);
+            //printf("NUM_BITS > 32\n");
+            return -1;
         }
 
         if (*bit > 7) {
-            printf("BIT > 7\n");
-            exit(1);
+            //printf("BIT > 7\n");
+            return -1;
         }
 
         uint32_t output = 0;
         while (true) {
-            unsigned char ch = data[*byte];
-            uint32_t bits_read;
+            uint8_t ch = data[*byte];
+            int bits_read;
             if (num_bits > 8) {
                 bits_read = 8 - *bit;
             } else {
@@ -56,24 +51,17 @@ namespace mp3 {
         return output;
     }
 
-    uint32_t getMask(uint32_t scalefac_band, uint32_t channel) {
-        uint32_t mask = 0;
-        if (scalefac_band < 6) {
-            mask = 0b10000000;
-        } else if (scalefac_band < 11) {
-            mask = 0b01000000;
-        } else if (scalefac_band < 16) {
-            mask = 0b00100000;
-        } else {
-            mask = 0b00010000;
-        }
-
-        if (channel != 0) {
-            mask >> 4;
-        }
-
-        return mask;
+    uint32_t readBitsInc(uint8_t* buffer, int* offset, int count) {
+        int byte = (*offset)>>3, bit = (*offset)&7;
+        uint32_t result = readBitsInc(buffer, &byte, &bit, count);
+        *offset += count;
+        return result;
     }
+
+    uint32_t readBits(uint8_t* buffer, int start_bit, int end_bit) {
+        return readBitsInc(buffer, &start_bit, end_bit-start_bit);
+    }
+
 }
 
 }

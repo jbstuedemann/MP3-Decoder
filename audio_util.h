@@ -9,14 +9,22 @@ namespace audio {
 
 namespace mp3 {
 
-inline uint32_t min(uint32_t a, uint32_t b);
+template<typename T>
+inline T min(T a, T b) {
+    return (a < b ? a : b);
+}
 
-inline uint32_t max(uint32_t a, uint32_t b);
+template<typename T>
+inline T max(T a, T b) {
+    return (a > b ? a : b);
+}
 
-uint32_t readBitsInc(unsigned char* data, int* byte, int* bit, int num_bits);
+uint32_t readBitsInc(uint8_t* data, int* byte, int* bit, int num_bits);
 
-uint32_t getMask(uint32_t scalefac_band, uint32_t channel);
-    
+uint32_t readBitsInc(uint8_t* buffer, int* offset, int count);
+
+uint32_t readBits(uint8_t *buffer, int start_bit, int end_bit);
+
 }
 
 }

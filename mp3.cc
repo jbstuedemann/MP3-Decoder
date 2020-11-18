@@ -5,41 +5,9 @@ namespace io {
 namespace audio {
 
 namespace mp3 {
-    uint32_t getBits(uint8_t* buffer, int start_bit, int end_bit) {
-        int start_byte = 0;
-        int end_byte = 0;
-
-        start_byte = start_bit >> 3;
-        end_byte = end_bit >> 3;
-        start_bit = start_bit % 8;
-        end_bit = end_bit % 8;
-
-        // get the bits
-        uint32_t result = ((uint32_t)buffer[start_byte] << (32 - (8 - start_bit))) >> (32 - (8 - start_bit));
-
-        if (start_byte != end_byte) {
-            while (++start_byte != end_byte) {
-                result <<= 8;
-                result += buffer[start_byte];
-            }
-            result <<= end_bit;
-            result += buffer[end_byte] >> (8 - end_bit);
-        } else if (end_bit != 8) {
-            result >>= (8 - end_bit); 
-        }
-
-        return result;
-    }
-
-    uint32_t getBitsInc(uint8_t* buffer, int* offset, int count) {
-        uint32_t result = getBits(buffer, *offset, *offset + count);
-        *offset += count;
-        return result;
-    }
-
+    
     MP3FrameDecoder::MP3FrameDecoder() {
         header = new MP3FrameHeader{};
-        side_info_prelim = new MP3SideInfoPrelim{};
         side_info = new MP3SideInfo{};
         for (uint32_t i = 0; i < kNumHuffmanTables; i++) {
             tables[i] = new HuffmanTree(i);
@@ -48,7 +16,6 @@ namespace mp3 {
 
     MP3FrameDecoder::~MP3FrameDecoder() {
         free(header);
-        free(side_info_prelim);
         free(side_info);
         for (uint32_t i = 0; i < kNumHuffmanTables; i++) {
             free(tables[i]);
@@ -57,6 +24,9 @@ namespace mp3 {
 
     // data points to the start of the frame header
     uint32_t MP3FrameDecoder::readFrame(uint8_t* data) {
+        // store start of frame
+        uint8_t* frame_start = data;
+
         // load the header data
         for (int i = 0; i < 4; i++) {
             ((uint8_t*)header)[i] = data[3-i]; 
@@ -69,18 +39,95 @@ namespace mp3 {
             data += 2;
         }
 
-        // load the side_info
-        for(int i = 0; i < 32; i++) ((uint8_t*)side_info_prelim)[i] = data[31-i];
+        // process side info and TODO main data
+        setSideInfo(data);
+        //setMainData(frame_start);
+
 
         for(int i = 0; i < 32; i++) printf("%02x\t", data[i]);
         printf("\n");
         header->printHeader();
-
-        side_info->resetData(side_info_prelim);
-
         side_info->printSideInfo();
 
         return header->frameLength();
+    }
+
+    void MP3FrameDecoder::setSideInfo(uint8_t* buffer) {
+        int count = 0;
+
+        // number of bytes the main data ends before the next frame header
+        side_info->main_data_begin = (int)readBitsInc(buffer, &count, 9);
+
+        // skip private bits
+        count += 3; 
+
+        for (uint32_t ch = 0; ch < header->channels(); ch++)
+            for (int scfsi_band = 0; scfsi_band < 4; scfsi_band++)
+                // scale factor selection information.
+                // if scfsi[scfsi_band] == 1, then scale factors for the first granule are reused in the second granule
+                // if scfsi[scfsi_band] == 0, then each granule has its own scaling factors
+                side_info->scfsi[ch][scfsi_band] = readBitsInc(buffer, &count, 1) != 0;
+
+        for (int gr = 0; gr < 2; gr++)
+            for (uint32_t ch = 0; ch < header->channels(); ch++) {
+                // length of the scaling factors and main data in bits
+                side_info->part2_3_length[gr][ch] = (int)readBitsInc(buffer, &count, 12);
+                // number of values in each big_region
+                side_info->big_value[gr][ch] = (int)readBitsInc(buffer, &count, 9);
+                // quantizer step size
+                side_info->global_gain[gr][ch] = (int)readBitsInc(buffer, &count, 8);
+                // used to determine the values of slen1 and slen2
+                side_info->scalefac_compress[gr][ch] = (int)readBitsInc(buffer, &count, 4);
+                // number of bits given to a range of scale factors.
+                side_info->slen1[gr][ch] = kSlenTable[side_info->scalefac_compress[gr][ch]][0];
+                side_info->slen2[gr][ch] = kSlenTable[side_info->scalefac_compress[gr][ch]][1];
+                // if set, a not normal window is used
+                side_info->window_switching[gr][ch] = readBitsInc(buffer, &count, 1) == 1;
+
+                if (side_info->window_switching[gr][ch]) {
+                    // the window type for the granule, 2 is special
+                    side_info->block_type[gr][ch] = (int)readBitsInc(buffer, &count, 2);
+                    // number of scale factor bands before window switching
+                    side_info->mixed_block_flag[gr][ch] = readBitsInc(buffer, &count, 1) == 1;
+                    if (side_info->mixed_block_flag[gr][ch]) {
+                        side_info->switch_point_l[gr][ch] = 8;
+                        side_info->switch_point_s[gr][ch] = 3;
+                    } else {
+                        side_info->switch_point_l[gr][ch] = 0;
+                        side_info->switch_point_s[gr][ch] = 0;
+                    }
+
+                    // these are set by default if window_switching
+                    side_info->region0_count[gr][ch] = side_info->block_type[gr][ch] == 2 ? 8 : 7;
+                    // no third region
+                    side_info->region1_count[gr][ch] = 20 - side_info->region0_count[gr][ch];
+
+                    for (int region = 0; region < 2; region++)
+                        // huffman table number for a big region
+                        side_info->table_select[gr][ch][region] = (int)readBitsInc(buffer, &count, 5);
+                    for (int window = 0; window < 3; window++)
+                        side_info->subblock_gain[gr][ch][window] = (int)readBitsInc(buffer, &count, 3);
+                } else {
+                    // set by default if !window_switching
+                    side_info->block_type[gr][ch] = 0;
+                    side_info->mixed_block_flag[gr][ch] = false;
+
+                    for (int region = 0; region < 3; region++)
+                        side_info->table_select[gr][ch][region] = (int)readBitsInc(buffer, &count, 5);
+
+                    // number of scale factor bands in the first big value region
+                    side_info->region0_count[gr][ch] = (int)readBitsInc(buffer, &count, 4);
+                    // number of scale factor bands in the third big value region
+                    side_info->region1_count[gr][ch] = (int)readBitsInc(buffer, &count, 3);
+                }
+
+                // if set, add values from a table to the scaling factors
+                side_info->preflag[gr][ch] = (int)readBitsInc(buffer, &count, 1);
+                // determines the step size
+                side_info->scalefac_scale[gr][ch] = (int)readBitsInc(buffer, &count, 1);
+                // table that determines which count1 table is used
+                side_info->count1table_select[gr][ch] = (int)readBitsInc(buffer, &count, 1);
+            }
     }
     
     void MP3FrameDecoder::setBandTables() {
@@ -106,251 +153,8 @@ namespace mp3 {
         }
     }
 
-    void MP3FrameDecoder::unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit) {
-        int sample = 0;
-        int table_num;
-        HuffmanTree* table = nullptr;
-
-        for (int i = 0; i < 576; i++) {
-            samples[gr][ch][i] = 0;
-        }
-
-        // get the big value region boundaries
-        int region0;
-        int region1;
-        if (side_info->windows_switching_flag[gr][ch] && side_info->block_type[gr][ch] == 2) {
-            region0 = 36;
-            region1 = 576;
-        } else {
-            region0 = band_index.long_win[side_info->region0_count[gr][ch] + 1];
-            region1 = band_index.long_win[side_info->region0_count[gr][ch] + 1 + side_info->region1_count[gr][ch] + 1];
-        }
-
-        // get the samples in the big value region
-        // IMPORTANT: each entry in the Huffman table yields two samples
-        for (; sample < (int)side_info->big_values[gr][ch] * 2; sample += 2) {
-            if (sample < region0) {
-                table_num = side_info->table_select[gr][ch][0];
-            } else if (sample < region1) {
-                table_num = side_info->table_select[gr][ch][1];
-            } else {
-                table_num = side_info->table_select[gr][ch][2];
-            }
-            table = tables[table_num];
-
-            if (table_num == 0) {
-                samples[gr][ch][sample] = 0;
-                continue;
-            }
-
-            bool repeat = true;
-            unsigned bit_sample = getBits(main_data, bit, bit + 32);
-
-            // use the Huffman table and find a matching bit pattern
-            for (int row = 0; row < big_value_max[table_num] && repeat; row++)
-                for (int col = 0; col < big_value_max[table_num]; col++) {
-                    int i = 2 * big_value_max[table_num] * row + 2 * col;
-                    unsigned value = table[i];
-                    unsigned size = table[i + 1];
-                    if (value >> (32 - size) == bit_sample >> (32 - size)) {
-                        bit += size;
-
-                        int values[2] = {row, col};
-                        for (int i = 0; i < 2; i++) {
-
-                            // linbits extends the sample's size if needed
-                            int linbit = 0;
-                            if (big_value_linbit[table_num] != 0 && values[i] == big_value_max[table_num] - 1)
-                                linbit = (int)getBitsInc(main_data, &bit, big_value_linbit[table_num]);
-
-                            // if the sample is negative or positive.
-                            int sign = 1;
-                            if (values[i] > 0)
-                                sign = getBitsInc(main_data, &bit, 1) ? -1 : 1;
-
-                            samples[gr][ch][sample + i] = (float)(sign * (values[i] + linbit));
-                        }
-
-                        repeat = false;
-                        break;
-                    }
-                }
-        }
-
-        // quadruples region
-        for (; bit < max_bit && sample + 4 < 576; sample += 4) {
-            int values[4];
-
-            // flip bits
-            if (side_info->count1table_select[gr][ch] == 1) {
-                unsigned bit_sample = getBitsInc(main_data, &bit, 4);
-                values[0] = (bit_sample & 0x08) > 0 ? 0 : 1;
-                values[1] = (bit_sample & 0x04) > 0 ? 0 : 1;
-                values[2] = (bit_sample & 0x02) > 0 ? 0 : 1;
-                values[3] = (bit_sample & 0x01) > 0 ? 0 : 1;
-            } else {
-                unsigned bit_sample = getBits(main_data, bit, bit + 32);
-                for (int entry = 0; entry < 16; entry++) {
-                    unsigned value = kQuadTable.hcod[entry];
-                    unsigned size = kQuadTable.hlen[entry];
-
-                    if (value >> (32 - size) == bit_sample >> (32 - size)) {
-                        bit += size;
-                        for (int i = 0; i < 4; i++)
-                            values[i] = (int)kQuadTable.value[entry][i];
-                        break;
-                    }
-                }
-            }
-
-            // get the sign bit
-            for (int i = 0; i < 4; i++) {
-                if (values[i] > 0 && getBitsInc(main_data, &bit, 1) == 1) {
-                    values[i] = -values[i];
-                }
-            }
-
-            for (int i = 0; i < 4; i++) {
-                samples[gr][ch][sample + i] = values[i];
-            }
-        }
-
-        // fill remaining samples with zero
-        for (; sample < 576; sample++) {
-            samples[gr][ch][sample] = 0;
-        }
-    }
-
-    MP3SideInfo::MP3SideInfo(MP3SideInfoPrelim* side_info_prelim) {
-        main_data_begin = side_info_prelim->main_data_begin;
-        scsfi = side_info_prelim->scsfi;
-        private_bits = side_info_prelim->private_bits;
-        // arrays yeet
-        count1table_select[0][0] = side_info_prelim->count1table_select_1_c1;
-        count1table_select[0][1] = side_info_prelim->count1table_select_1_c2;
-        count1table_select[1][0] = side_info_prelim->count1table_select_2_c1;
-        count1table_select[1][1] = side_info_prelim->count1table_select_2_c2;
-        scalefac_scale[0][0] = side_info_prelim->scalefac_scale_1_c1;
-        scalefac_scale[0][1] = side_info_prelim->scalefac_scale_1_c2;
-        scalefac_scale[1][0] = side_info_prelim->scalefac_scale_2_c1;
-        scalefac_scale[1][1] = side_info_prelim->scalefac_scale_2_c2;
-        preflag[0][0] = side_info_prelim->preflag_1_c1;
-        preflag[0][1] = side_info_prelim->preflag_1_c2;
-        preflag[1][0] = side_info_prelim->preflag_2_c1;
-        preflag[1][1] = side_info_prelim->preflag_2_c2;
-        region1_count[0][0] = side_info_prelim->region1_count_1_c1;
-        region1_count[0][1] = side_info_prelim->region1_count_1_c2;
-        region1_count[1][0] = side_info_prelim->region1_count_2_c1;
-        region1_count[1][1] = side_info_prelim->region1_count_2_c2;
-        region0_count[0][0] = side_info_prelim->region0_count_1_c1;
-        region0_count[0][1] = side_info_prelim->region0_count_1_c2;
-        region0_count[1][0] = side_info_prelim->region0_count_2_c1;
-        region0_count[1][1] = side_info_prelim->region0_count_2_c2;
-        table_select[0][0] = side_info_prelim->table_select_1_c1;
-        table_select[0][1] = side_info_prelim->table_select_1_c2;
-        table_select[1][0] = side_info_prelim->table_select_2_c1;
-        table_select[1][1] = side_info_prelim->table_select_2_c2;
-        windows_switching_flag[0][0] = side_info_prelim->windows_switching_flag_1_c1;
-        windows_switching_flag[0][1] = side_info_prelim->windows_switching_flag_1_c2;
-        windows_switching_flag[1][0] = side_info_prelim->windows_switching_flag_2_c1;
-        windows_switching_flag[1][1] = side_info_prelim->windows_switching_flag_2_c2;
-        scalefac_compress[0][0] = side_info_prelim->scalefac_compress_1_c1;
-        scalefac_compress[0][1] = side_info_prelim->scalefac_compress_1_c2;
-        scalefac_compress[1][0] = side_info_prelim->scalefac_compress_2_c1;
-        scalefac_compress[1][1] = side_info_prelim->scalefac_compress_2_c2;
-        global_gain[0][0] = side_info_prelim->global_gain_1_c1;
-        global_gain[0][1] = side_info_prelim->global_gain_1_c2;
-        global_gain[1][0] = side_info_prelim->global_gain_2_c1;
-        global_gain[1][1] = side_info_prelim->global_gain_2_c2;
-        big_values[0][0] = side_info_prelim->big_values_1_c1;
-        big_values[0][1] = side_info_prelim->big_values_1_c2;
-        big_values[1][0] = side_info_prelim->big_values_2_c1;
-        big_values[1][1] = side_info_prelim->big_values_2_c2;
-        part2_3_length[0][0] = side_info_prelim->part2_3_length_1_c1;
-        part2_3_length[0][1] = side_info_prelim->part2_3_length_1_c2;
-        part2_3_length[1][0] = side_info_prelim->part2_3_length_2_c1;
-        part2_3_length[1][1] = side_info_prelim->part2_3_length_2_c2;
-    }
-
-    void MP3SideInfo::resetData(MP3SideInfoPrelim* side_info_prelim) {
-        main_data_begin = side_info_prelim->main_data_begin;
-        scsfi = side_info_prelim->scsfi;
-        private_bits = side_info_prelim->private_bits;
-        // arrays yeet
-        count1table_select[0][0] = side_info_prelim->count1table_select_1_c1;
-        count1table_select[0][1] = side_info_prelim->count1table_select_1_c2;
-        count1table_select[1][0] = side_info_prelim->count1table_select_2_c1;
-        count1table_select[1][1] = side_info_prelim->count1table_select_2_c2;
-        scalefac_scale[0][0] = side_info_prelim->scalefac_scale_1_c1;
-        scalefac_scale[0][1] = side_info_prelim->scalefac_scale_1_c2;
-        scalefac_scale[1][0] = side_info_prelim->scalefac_scale_2_c1;
-        scalefac_scale[1][1] = side_info_prelim->scalefac_scale_2_c2;
-        preflag[0][0] = side_info_prelim->preflag_1_c1;
-        preflag[0][1] = side_info_prelim->preflag_1_c2;
-        preflag[1][0] = side_info_prelim->preflag_2_c1;
-        preflag[1][1] = side_info_prelim->preflag_2_c2;
-        region1_count[0][0] = side_info_prelim->region1_count_1_c1;
-        region1_count[0][1] = side_info_prelim->region1_count_1_c2;
-        region1_count[1][0] = side_info_prelim->region1_count_2_c1;
-        region1_count[1][1] = side_info_prelim->region1_count_2_c2;
-        region0_count[0][0] = side_info_prelim->region0_count_1_c1;
-        region0_count[0][1] = side_info_prelim->region0_count_1_c2;
-        region0_count[1][0] = side_info_prelim->region0_count_2_c1;
-        region0_count[1][1] = side_info_prelim->region0_count_2_c2;
-        table_select[0][0] = side_info_prelim->table_select_1_c1;
-        table_select[0][1] = side_info_prelim->table_select_1_c2;
-        table_select[1][0] = side_info_prelim->table_select_2_c1;
-        table_select[1][1] = side_info_prelim->table_select_2_c2;
-        windows_switching_flag[0][0] = side_info_prelim->windows_switching_flag_1_c1;
-        windows_switching_flag[0][1] = side_info_prelim->windows_switching_flag_1_c2;
-        windows_switching_flag[1][0] = side_info_prelim->windows_switching_flag_2_c1;
-        windows_switching_flag[1][1] = side_info_prelim->windows_switching_flag_2_c2;
-        scalefac_compress[0][0] = side_info_prelim->scalefac_compress_1_c1;
-        scalefac_compress[0][1] = side_info_prelim->scalefac_compress_1_c2;
-        scalefac_compress[1][0] = side_info_prelim->scalefac_compress_2_c1;
-        scalefac_compress[1][1] = side_info_prelim->scalefac_compress_2_c2;
-        global_gain[0][0] = side_info_prelim->global_gain_1_c1;
-        global_gain[0][1] = side_info_prelim->global_gain_1_c2;
-        global_gain[1][0] = side_info_prelim->global_gain_2_c1;
-        global_gain[1][1] = side_info_prelim->global_gain_2_c2;
-        big_values[0][0] = side_info_prelim->big_values_1_c1;
-        big_values[0][1] = side_info_prelim->big_values_1_c2;
-        big_values[1][0] = side_info_prelim->big_values_2_c1;
-        big_values[1][1] = side_info_prelim->big_values_2_c2;
-        part2_3_length[0][0] = side_info_prelim->part2_3_length_1_c1;
-        part2_3_length[0][1] = side_info_prelim->part2_3_length_1_c2;
-        part2_3_length[1][0] = side_info_prelim->part2_3_length_2_c1;
-        part2_3_length[1][1] = side_info_prelim->part2_3_length_2_c2;
-    }
-
-    void MP3SideInfo::printSideInfo() {
-        printf("main_data_begin: %d\n", main_data_begin);
-        printf("private_bits: %d\n", private_bits);
-        printf("scsfi: %d\n", scsfi);
-
-        for (int i = 0; i < 2; i++) {
-            printf("************ GRANULE %d ***********\n", i + 1);
-            for (int j = 0; j < 2; j++) {
-                printf("************ CHANNEL %d ***********\n", j + 1);
-                printf("count1table_select: %d\n", count1table_select[i][j]);
-                printf("scalefac_scale: %d\n", scalefac_scale[i][j]);
-                printf("preflag: %d\n", preflag[i][j]);
-                printf("region1_count: %d\n", region1_count[i][j]);
-                printf("region0_count: %d\n", region0_count[i][j]);
-                printf("table_select: %d\n", table_select[i][j]);
-                printf("windows_switching_flag: %d\n", windows_switching_flag[i][j]);
-                printf("scalefac_compress: %d\n", scalefac_compress[i][j]);
-                printf("global_gain: %d\n", global_gain[i][j]);
-                printf("big_values: %d\n", big_values[i][j]);
-                printf("part2_3_length: %d\n", part2_3_length[i][j]);
-            }
-        }
-    }
-
-    // assumes data[0] is the first byte of the scalefac information
-    // assumes all blocks are long
-    void MP3FrameDecoder::unpackScalefacs(unsigned char *data, uint32_t granule, uint32_t channel) {
-        auto slen = kSlenTable[side_info->scalefac_compress[granule][channel]];
+    void MP3FrameDecoder::unpackScalefacs(uint8_t* data, uint32_t granule, uint32_t channel, int &bit) {
+        /*auto slen = kSlenTable[side_info->scalefac_compress[granule][channel]];
         int byte = 0;
         int bit = 0;
         if (granule == 0) {
@@ -379,7 +183,131 @@ namespace mp3 {
                     }
                 }
             }
+        }*/
+    }
+
+    void MP3FrameDecoder::unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit) {
+        int sample = 0;
+        int table_num;
+        HuffmanTree* table = nullptr;
+
+        for (int i = 0; i < 576; i++) {
+            samples[gr][ch][i] = 0;
         }
+
+        // get the big value region boundaries
+        int region0;
+        int region1;
+        if (side_info->window_switching[gr][ch] && side_info->block_type[gr][ch] == 2) {
+            region0 = 36;
+            region1 = 576;
+        } else {
+            region0 = band_index.long_win[side_info->region0_count[gr][ch] + 1];
+            region1 = band_index.long_win[side_info->region0_count[gr][ch] + 1 + side_info->region1_count[gr][ch] + 1];
+        }
+
+        // get the samples in the big value region
+        // IMPORTANT: each entry in the Huffman table yields two samples
+        for (; sample < (int)side_info->big_value[gr][ch] * 2; sample += 2) {
+            if (sample < region0) {
+                table_num = side_info->table_select[gr][ch][0];
+            } else if (sample < region1) {
+                table_num = side_info->table_select[gr][ch][1];
+            } else {
+                table_num = side_info->table_select[gr][ch][2];
+            }
+            table = tables[table_num];
+
+            if (table_num == 0) {
+                samples[gr][ch][sample] = 0;
+                continue;
+            }
+
+            // use the Huffman table and find a matching bit pattern
+            int* values = table->getSampleValues(main_data, &bit);
+            for (int i = 0; i < 2; i++) {
+
+                // linbits extends the sample's size if needed
+                int linbit = 0;
+                if (kHuffmanTableMetadata[table_num][2] != 0 && values[i] == (int)max(kHuffmanTableMetadata[table_num][0], kHuffmanTableMetadata[table_num][1]) - 1)
+                    linbit = (int)readBitsInc(main_data, &bit, kHuffmanTableMetadata[table_num][2]);
+
+                // if the sample is negative or positive.
+                int sign = 1;
+                if (values[i] > 0)
+                    sign = readBitsInc(main_data, &bit, 1) ? -1 : 1;
+
+                samples[gr][ch][sample + i] = (float)(sign * (values[i] + linbit));
+            }
+
+        }
+
+        // quadruples region
+        for (; bit < max_bit && sample + 4 < 576; sample += 4) {
+            int values[4];
+
+            // flip bits
+            if (side_info->count1table_select[gr][ch] == 1) {
+                unsigned bit_sample = readBitsInc(main_data, &bit, 4);
+                values[0] = (bit_sample & 0x08) > 0 ? 0 : 1;
+                values[1] = (bit_sample & 0x04) > 0 ? 0 : 1;
+                values[2] = (bit_sample & 0x02) > 0 ? 0 : 1;
+                values[3] = (bit_sample & 0x01) > 0 ? 0 : 1;
+            } else {
+                unsigned bit_sample = readBits(main_data, bit, bit + 32);
+                for (int entry = 0; entry < 16; entry++) {
+                    unsigned value = kQuadTable.hcod[entry];
+                    unsigned size = kQuadTable.hlen[entry];
+
+                    if (value >> (32 - size) == bit_sample >> (32 - size)) {
+                        bit += size;
+                        for (int i = 0; i < 4; i++)
+                            values[i] = (int)kQuadTable.value[entry][i];
+                        break;
+                    }
+                }
+            }
+
+            // get the sign bit
+            for (int i = 0; i < 4; i++) {
+                if (values[i] > 0 && readBitsInc(main_data, &bit, 1) == 1) {
+                    values[i] = -values[i];
+                }
+            }
+
+            for (int i = 0; i < 4; i++) {
+                samples[gr][ch][sample + i] = values[i];
+            }
+        }
+
+        // fill remaining samples with zero
+        for (; sample < 576; sample++) {
+            samples[gr][ch][sample] = 0;
+        }
+    }
+    
+    void MP3SideInfo::printSideInfo() {
+        /*printf("main_data_begin: %d\n", main_data_begin);
+        printf("private_bits: %d\n", private_bits);
+        printf("scsfi: %d\n", scsfi);
+
+        for (int i = 0; i < 2; i++) {
+            printf("************ GRANULE %d ***********\n", i + 1);
+            for (int j = 0; j < 2; j++) {
+                printf("************ CHANNEL %d ***********\n", j + 1);
+                printf("count1table_select: %d\n", count1table_select[i][j]);
+                printf("scalefac_scale: %d\n", scalefac_scale[i][j]);
+                printf("preflag: %d\n", preflag[i][j]);
+                printf("region1_count: %d\n", region1_count[i][j]);
+                printf("region0_count: %d\n", region0_count[i][j]);
+                printf("table_select: %d\n", table_select[i][j]);
+                printf("windows_switching_flag: %d\n", windows_switching_flag[i][j]);
+                printf("scalefac_compress: %d\n", scalefac_compress[i][j]);
+                printf("global_gain: %d\n", global_gain[i][j]);
+                printf("big_values: %d\n", big_values[i][j]);
+                printf("part2_3_length: %d\n", part2_3_length[i][j]);
+            }
+        }*/
     }
 
 }

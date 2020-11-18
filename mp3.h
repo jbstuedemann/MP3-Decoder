@@ -106,6 +106,10 @@ namespace mp3 {
             return 0xFFFFFFFF;
         }
 
+        uint32_t channels() {
+            return 2;
+        }
+
         void printHeader() {
             printf("*******************************\n");
             printf("************ Header ***********\n");
@@ -147,173 +151,41 @@ namespace mp3 {
     //     uint32_t table_select : 10;
     //     uint32_t subblock_gain : 10;
     // };
-
-    struct MP3SideInfoPrelim {
-        uint32_t count1table_select_2_c2 : 1;
-        uint32_t scalefac_scale_2_c2 : 1;
-        uint32_t preflag_2_c2 : 1;
-
-        uint32_t region1_count_2_c2 : 3;
-        uint32_t region0_count_2_c2 : 4;
-        uint32_t table_select_2_c2 : 15;
-
-        uint32_t windows_switching_flag_2_c2 : 1;
-        uint32_t scalefac_compress_2_c2 : 4;
-        uint32_t global_gain_2_c2 : 8;
-        uint32_t big_values_2_c2 : 9;
-        uint32_t part2_3_length_2_c2 : 12;
-
-        uint32_t count1table_select_2_c1 : 1;
-        uint32_t scalefac_scale_2_c1 : 1;
-        uint32_t preflag_2_c1 : 1;
-
-        uint32_t region1_count_2_c1 : 3;
-        uint32_t region0_count_2_c1 : 4;
-        uint32_t table_select_2_c1 : 15;
-
-        uint32_t windows_switching_flag_2_c1 : 1;
-        uint32_t scalefac_compress_2_c1 : 4;
-        uint32_t global_gain_2_c1 : 8;
-        uint32_t big_values_2_c1 : 9;
-        uint32_t part2_3_length_2_c1 : 12;
-
-        uint32_t count1table_select_1_c2 : 1;
-        uint32_t scalefac_scale_1_c2 : 1;
-        uint32_t preflag_1_c2 : 1;
-
-        uint32_t region1_count_1_c2 : 3;
-        uint32_t region0_count_1_c2 : 4;
-        uint32_t table_select_1_c2 : 15;
-
-        uint32_t windows_switching_flag_1_c2 : 1;
-        uint32_t scalefac_compress_1_c2 : 4;
-        uint32_t global_gain_1_c2 : 8;
-        uint32_t big_values_1_c2 : 9;
-        uint32_t part2_3_length_1_c2 : 12;
-
-        uint32_t count1table_select_1_c1 : 1;
-        uint32_t scalefac_scale_1_c1 : 1;
-        uint32_t preflag_1_c1 : 1;
-
-        uint32_t region1_count_1_c1 : 3;
-        uint32_t region0_count_1_c1 : 4;
-        uint32_t table_select_1_c1 : 15;
-
-        uint32_t windows_switching_flag_1_c1 : 1;
-        uint32_t scalefac_compress_1_c1 : 4;
-        uint32_t global_gain_1_c1 : 8;
-        uint32_t big_values_1_c1 : 9;
-        uint32_t part2_3_length_1_c1 : 12;
-
-        //Side Info Meta Data
-        uint32_t scsfi : 8;
-        uint32_t private_bits : 3;
-        uint32_t main_data_begin : 9; // if 0, main data direct
-
-        void printSideInfo() {
-            printf("*******************************\n");
-            printf("********** Side Info **********\n");
-            printf("\tscsfi: %d\n", scsfi);
-            printf("\tprivate_bits: %d\n", private_bits);
-            printf("\tmain_data_begin: %d\n", main_data_begin);
-        }
-
-        void printGranule_1() {
-            printf("*******************************\n");
-            printf("********** Granule 1 **********\n");
-            printf("Channel 1:\n");
-            printf("\tcount1table_select 1: %d\n", count1table_select_1_c1);
-            printf("\tscalefac_scale 1: %d\n", scalefac_scale_1_c1);
-            printf("\tpreflag 1: %d\n", preflag_1_c1);
-            printf("\tregion1_count 1: %d\n", region1_count_1_c1);
-            printf("\tregion0_count 1: %d\n", region0_count_1_c1);
-            printf("\ttable_select 1: %d\n", table_select_1_c1);
-            printf("\twindows_switching_flag 1: %d\n", windows_switching_flag_1_c1);
-            printf("\tscalefac_compress 1: %d\n", scalefac_compress_1_c1);
-            printf("\tglobal_gain 1: %d\n", global_gain_1_c1);
-            printf("\tbig_values 1: %d\n", big_values_1_c1);
-            printf("\tpart2_3_length 1: %d\n", part2_3_length_1_c1);
-            printf("Channel 2:\n");
-            printf("\tcount1table_select 1: %d\n", count1table_select_1_c2);
-            printf("\tscalefac_scale 1: %d\n", scalefac_scale_1_c2);
-            printf("\tpreflag 1: %d\n", preflag_1_c2);
-            printf("\tregion1_count 1: %d\n", region1_count_1_c2);
-            printf("\tregion0_count 1: %d\n", region0_count_1_c2);
-            printf("\ttable_select 1: %d\n", table_select_1_c2);
-            printf("\twindows_switching_flag 1: %d\n", windows_switching_flag_1_c2);
-            printf("\tscalefac_compress 1: %d\n", scalefac_compress_1_c2);
-            printf("\tglobal_gain 1: %d\n", global_gain_1_c2);
-            printf("\tbig_values 1: %d\n", big_values_1_c2);
-            printf("\tpart2_3_length 1: %d\n", part2_3_length_1_c2);
-        }
-
-        void printGranule_2() {
-            printf("*******************************\n");
-            printf("********** Granule 2 **********\n");
-            printf("Channel 1:\n");
-            printf("\tcount1table_select 2: %d\n", count1table_select_2_c1);
-            printf("\tscalefac_scale 2: %d\n", scalefac_scale_2_c1);
-            printf("\tpreflag 2: %d\n", preflag_2_c1);
-            printf("\tregion1_count 2: %d\n", region1_count_2_c1);
-            printf("\tregion0_count 2: %d\n", region0_count_2_c1);
-            printf("\ttable_select 2: %d\n", table_select_2_c1);
-            printf("\twindows_switching_flag 2: %d\n", windows_switching_flag_2_c1);
-            printf("\tscalefac_compress 2: %d\n", scalefac_compress_2_c1);
-            printf("\tglobal_gain 2: %d\n", global_gain_2_c1);
-            printf("\tbig_values 2: %d\n", big_values_2_c1);
-            printf("\tpart2_3_length 2: %d\n", part2_3_length_2_c1);
-            printf("Channel 2:\n");
-            printf("\tcount1table_select 2: %d\n", count1table_select_2_c2);
-            printf("\tscalefac_scale 2: %d\n", scalefac_scale_2_c2);
-            printf("\tpreflag 2: %d\n", preflag_2_c2);
-            printf("\tregion1_count 2: %d\n", region1_count_2_c2);
-            printf("\tregion0_count 2: %d\n", region0_count_2_c2);
-            printf("\ttable_select 2: %d\n", table_select_2_c2);
-            printf("\twindows_switching_flag 2: %d\n", windows_switching_flag_2_c2);
-            printf("\tscalefac_compress 2: %d\n", scalefac_compress_2_c2);
-            printf("\tglobal_gain 2: %d\n", global_gain_2_c2);
-            printf("\tbig_values 2: %d\n", big_values_2_c2);
-            printf("\tpart2_3_length 2: %d\n", part2_3_length_2_c2);
-        }
-    } __attribute__((packed));
-
+  
     struct MP3SideInfo {
         // Metadata
-        uint32_t scsfi; // 8 bits
+        bool scfsi[2][4]; // 8 bits
         uint32_t private_bits; // 3 bits
         uint32_t main_data_begin; // 9 bits; if 0, main data directly follows side info, otherwise it's a negative offset from sync word
 
         // Actual Side info
         // field[x][y] = field for granule x + 1, channel y + 1
-        uint32_t count1table_select[2][2];
-        uint32_t scalefac_scale[2][2];
-        uint32_t preflag[2][2];
-
-        uint32_t region1_count[2][2];
-        uint32_t region0_count[2][2];
-        uint32_t table_select[2][2];
-
-        uint32_t windows_switching_flag[2][2];
-        uint32_t block_type[2][2];
-        uint32_t scalefac_compress[2][2];
-        uint32_t global_gain[2][2];
-        uint32_t big_values[2][2];
         uint32_t part2_3_length[2][2];
-
-        MP3SideInfo(){}
-        MP3SideInfo(MP3SideInfoPrelim* side_info_prelim);
-        void resetData(MP3SideInfoPrelim* side_info_prelim);
+        uint32_t part2_length[2][2];
+        uint32_t big_value[2][2];
+        uint32_t global_gain[2][2];
+        uint32_t scalefac_compress[2][2];
+        uint32_t slen1[2][2];
+        uint32_t slen2[2][2];
+        bool window_switching[2][2];
+        uint32_t block_type[2][2];
+        bool mixed_block_flag[2][2];
+        uint32_t switch_point_l[2][2];
+        uint32_t switch_point_s[2][2];
+        uint32_t table_select[2][2][3];
+        uint32_t subblock_gain[2][2][3];
+        uint32_t region0_count[2][2];
+        uint32_t region1_count[2][2];
+        uint32_t preflag[2][2];
+        uint32_t scalefac_scale[2][2];
+        uint32_t count1table_select[2][2];
 
         void printSideInfo();
     };
 
     struct MP3FrameDecoder {
+        // header and info from header
         MP3FrameHeader* header;
-        MP3SideInfoPrelim* side_info_prelim;
-        MP3SideInfo* side_info;
-
-        HuffmanTree* tables [kNumHuffmanTables];
-
         struct {
             const unsigned *long_win;
             const unsigned *short_win;
@@ -323,6 +195,11 @@ namespace mp3 {
             const unsigned *short_win;
         } band_width;
 
+        // side info and info from side info
+        MP3SideInfo* side_info;
+        HuffmanTree* tables [kNumHuffmanTables];
+
+        // other decoding stuffs
         double samples [2][2][576];
         int scalefacs [2][2][22];
 
@@ -333,7 +210,9 @@ namespace mp3 {
 
         void setBandTables();
 
-        void unpackScalefacs(unsigned char *data, uint32_t granule, uint32_t channel);
+        void setSideInfo(uint8_t* buffer);
+        //void setMainData(uint8_t* buffer);
+        void unpackScalefacs(uint8_t* data, uint32_t granule, uint32_t channel, int &bit);
         void unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit);
 
     };
