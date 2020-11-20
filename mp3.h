@@ -205,7 +205,7 @@ namespace mp3 {
         float prev_samples [2][32][18];
         float fifo [2][1024];
 
-        util::Vector<uint8_t> main_data;
+        util::Vector<uint8_t> main_data_buffer;
         float samples [2][2][576];
         float pcm [2304];
 
