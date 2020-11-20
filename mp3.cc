@@ -406,6 +406,12 @@ namespace mp3 {
             }
     }
 
+    void MP3FrameDecoder::frequencyInversion(uint32_t granule, uint32_t channel) {
+        for (int sb = 1; sb < 18; sb += 2)
+            for (int i = 1; i < 32; i += 2)
+                samples[granule][channel][i * 18 + sb] *= -1;
+    }
+
     void MP3FrameDecoder::IMDCT(uint32_t granule, uint32_t channel) {
 
     }
