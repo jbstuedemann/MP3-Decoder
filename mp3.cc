@@ -1,4 +1,5 @@
 #include "mp3.h"
+#include "math.h"
 
 namespace io {
 
@@ -72,6 +73,30 @@ namespace mp3 {
         // process side info and main data
         setSideInfo(data);
         setMainData(frame_start);
+        int channels = (header->channel_mode == 3 ? 1 : 2);
+        for (int gr = 0; gr < 2; gr++) {
+            for (int ch = 0; ch < channels; ch++) {
+                requantize(gr, ch);
+            }
+
+            if (header->channel_mode == 1 && (header->mode_extension >> 1)) {
+                MSStereo(gr);
+            }
+
+            for (int ch = 0; ch < channels; ch++) {
+                if (side_info->block_type[gr][ch] == 2 || side_info->mixed_block_flag[gr][ch]) {
+                    reorder(gr, ch);
+                } else {
+                    aliasReduction(gr, ch);
+                }
+
+                IMDCT(gr, ch);
+                frequencyInversion(gr, ch);
+                synthFilterbank(gr, ch);
+            }
+        }
+
+        interleave();
 
         header->printHeader();
         side_info->printSideInfo();
@@ -381,16 +406,79 @@ namespace mp3 {
 
     }
 
-    void MP3FrameDecoder::requantize(uint32_t granule, uint32_t channel) {
+    void MP3FrameDecoder::requantize(uint32_t gr, uint32_t ch) {
+        using namespace util;
+        float exp1, exp2;
+        int window = 0;
+        int sfb = 0;
+        const float scalefac_mult = side_info->scalefac_scale[gr][ch] == 0 ? 0.5 : 1;
 
+        for (int sample = 0, i = 0; sample < 576; sample++, i++) {
+            if (side_info->block_type[gr][ch] == 2 || (side_info->mixed_block_flag[gr][ch] && sfb >= 8)) {
+                if (i == band_width.short_win[sfb]) {
+                    i = 0;
+                    if (window == 2) {
+                        window = 0;
+                        sfb++;
+                    } else
+                        window++;
+                }
+
+                exp1 = side_info->global_gain[gr][ch] - 210.0 - 8.0 * side_info->subblock_gain[gr][ch][window];
+                exp2 = scalefac_mult * scalefac_s[gr][ch][window][sfb];
+            } else {
+                if (sample == band_index.long_win[sfb + 1])
+                    /* Don't increment sfb at the zeroth sample. */
+                    sfb++;
+
+                exp1 = side_info->global_gain[gr][ch] - 210.0;
+                exp2 = scalefac_mult * (scalefac_l[gr][ch][sfb] + side_info->preflag[gr][ch] * kPretab[sfb]);
+            }
+
+            double sign = samples[gr][ch][sample] < 0 ? -1.0f : 1.0f;
+            double a = math::power(math::abs(samples[gr][ch][sample]), 4.0 / 3.0);
+            float b = math::power(2.0, exp1 / 4.0);
+            float c = math::power(2.0, -exp2);
+
+            samples[gr][ch][sample] = sign * a * b * c;
+        }
     }
 
-    void MP3FrameDecoder::MSStereo(uint32_t granule) {
-
+    void MP3FrameDecoder::MSStereo(uint32_t gr) {
+        for (int sample = 0; sample < 576; sample++) {
+            float middle = samples[gr][0][sample];
+            float side = samples[gr][1][sample];
+            samples[gr][0][sample] = (middle + side) / util::math::M_SQRT2;
+            samples[gr][1][sample] = (middle - side) / util::math::M_SQRT2;
+        }
     }
 
-    void MP3FrameDecoder::reorder(uint32_t granule, uint32_t channel) {
+    void MP3FrameDecoder::reorder(uint32_t gr, uint32_t ch) {
+        int total = 0;
+        int start = 0;
+        int block = 0;
+        float samples[576] = {0};
 
+        for (int sb = 0; sb < 12; sb++) {
+            const int sb_width = band_width.short_win[sb];
+
+            for (int ss = 0; ss < sb_width; ss++) {
+                samples[start + block + 0] = this->samples[gr][ch][total + ss + sb_width * 0];
+                samples[start + block + 6] = this->samples[gr][ch][total + ss + sb_width * 1];
+                samples[start + block + 12] = this->samples[gr][ch][total + ss + sb_width * 2];
+
+                if (block != 0 && block % 5 == 0) { /* 6 * 3 = 18 */
+                    start += 18;
+                    block = 0;
+                } else
+                    block++;
+            }
+
+            total += sb_width * 3;
+        }
+
+        for (int i = 0; i < 576; i++)
+            this->samples[gr][ch][i] = samples[i];
     }
 
     void MP3FrameDecoder::aliasReduction(uint32_t granule, uint32_t channel) {
@@ -412,12 +500,129 @@ namespace mp3 {
                 samples[granule][channel][i * 18 + sb] *= -1;
     }
 
-    void MP3FrameDecoder::IMDCT(uint32_t granule, uint32_t channel) {
+    void MP3FrameDecoder::IMDCT(uint32_t gr, uint32_t ch) {
+        using namespace util;
+        static bool init = true;
+        static float sine_block[4][36];
+        float sample_block[36];
 
+        if (init) {
+            int i;
+            for (i = 0; i < 36; i++)
+                sine_block[0][i] = math::sin(math::M_PI / 36.0 * (i + 0.5));
+            for (i = 0; i < 18; i++)
+                sine_block[1][i] = math::sin(math::M_PI / 36.0 * (i + 0.5));
+            for (; i < 24; i++)
+                sine_block[1][i] = 1.0;
+            for (; i < 30; i++)
+                sine_block[1][i] = math::sin(math::M_PI / 12.0 * (i - 18.0 + 0.5));
+            for (; i < 36; i++)
+                sine_block[1][i] = 0.0;
+            for (i = 0; i < 12; i++)
+                sine_block[2][i] = math::sin(math::M_PI / 12.0 * (i + 0.5));
+            for (i = 0; i < 6; i++)
+                sine_block[3][i] = 0.0;
+            for (; i < 12; i++)
+                sine_block[3][i] = math::sin(math::M_PI / 12.0 * (i - 6.0 + 0.5));
+            for (; i < 18; i++)
+                sine_block[3][i] = 1.0;
+            for (; i < 36; i++)
+                sine_block[3][i] = math::sin(math::M_PI / 36.0 * (i + 0.5));
+            init = false;
+        }
+
+        const int n = side_info->block_type[gr][ch] == 2 ? 12 : 36;
+        const int half_n = n / 2;
+        int sample = 0;
+
+        for (int block = 0; block < 32; block++) {
+            for (int win = 0; win < (side_info->block_type[gr][ch] == 2 ? 3 : 1); win++) {
+                for (int i = 0; i < n; i++) {
+                    float xi = 0.0;
+                    for (int k = 0; k < half_n; k++) {
+                        float s = samples[gr][ch][18 * block + half_n * win + k];
+                        xi += s * math::cos(math::M_PI / (2 * n) * (2 * i + 1 + half_n) * (2 * k + 1));
+                    }
+
+                    /* Windowing samples. */
+                    sample_block[win * n + i] = xi * sine_block[side_info->block_type[gr][ch]][i];
+                }
+            }
+
+            if (side_info->block_type[gr][ch] == 2) {
+                float temp_block[36];
+                memcpy(temp_block, sample_block, 36 * 4);
+
+                int i = 0;
+                for (; i < 6; i++)
+                    sample_block[i] = 0;
+                for (; i < 12; i++)
+                    sample_block[i] = temp_block[0 + i - 6];
+                for (; i < 18; i++)
+                    sample_block[i] = temp_block[0 + i - 6] + temp_block[12 + i - 12];
+                for (; i < 24; i++)
+                    sample_block[i] = temp_block[12 + i - 12] + temp_block[24 + i - 18];
+                for (; i < 30; i++)
+                    sample_block[i] = temp_block[24 + i - 18];
+                for (; i < 36; i++)
+                    sample_block[i] = 0;
+            }
+
+            /* Overlap. */
+            for (int i = 0; i < 18; i++) {
+                samples[gr][ch][sample + i] = sample_block[i] + prev_samples[ch][block][i];
+                prev_samples[ch][block][i] = sample_block[18 + i];
+            }
+            sample += 18;
+        }
     }
 
-    void MP3FrameDecoder::synthFilterbank(uint32_t granule, uint32_t channel) {
+    void MP3FrameDecoder::synthFilterbank(uint32_t gr, uint32_t ch) {
+        using namespace util;
+        static float n[64][32];
+        static bool init = true;
 
+        if (init) {
+            init = false;
+            for (int i = 0; i < 64; i++)
+                for (int j = 0; j < 32; j++)
+                    n[i][j] = math::cos((16.0 + i) * (2.0 * j + 1.0) * (math::M_PI / 64.0));
+        }
+
+        float s[32], u[512], w[512];
+        float pcm[576];
+
+        for (int sb = 0; sb < 18; sb++) {
+            for (int i = 0; i < 32; i++)
+                s[i] = samples[gr][ch][i * 18 + sb];
+
+            for (int i = 1023; i > 63; i--)
+                fifo[ch][i] = fifo[ch][i - 64];
+
+            for (int i = 0; i < 64; i++) {
+                fifo[ch][i] = 0.0;
+                for (int j = 0; j < 32; j++)
+                    fifo[ch][i] += s[j] * n[i][j];
+            }
+
+            for (int i = 0; i < 8; i++)
+                for (int j = 0; j < 32; j++) {
+                    u[i * 64 + j] = fifo[ch][i * 128 + j];
+                    u[i * 64 + j + 32] = fifo[ch][i * 128 + j + 96];
+                }
+
+            for (int i = 0; i < 512; i++)
+                w[i] = u[i] * kSynth_Window[i];
+
+            for (int i = 0; i < 32; i++) {
+                float sum = 0;
+                for (int j = 0; j < 16; j++)
+                    sum += w[j * 32 + i];
+                pcm[32 * sb + i] = sum;
+            }
+        }
+
+        memcpy(samples[gr][ch], pcm, 576 * 4);
     }
 
     void MP3FrameDecoder::interleave() {
