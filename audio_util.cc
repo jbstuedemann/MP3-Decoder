@@ -1,7 +1,3 @@
-#define PI    3.141592653589793
-#define SQRT2 1.414213562373095
-
-#include <cstdlib>
 #include "audio_util.h"
 
 namespace io {
@@ -9,7 +5,6 @@ namespace io {
 namespace audio {
 
 namespace mp3 {
-    
 
     // assumes num_bits <= 32
     // first bit is bit 0, first byte is byte 0
@@ -51,7 +46,6 @@ namespace mp3 {
             *bit = 0;
             (*byte)++;
         }
-
         return output;
     }
 
@@ -66,38 +60,35 @@ namespace mp3 {
         return readBitsInc(buffer, &start_bit, end_bit-start_bit);
     }
 
+    double wrapAngle( double angle )
+    {
+        double twoPi = 2.0*M_PI;
+        return angle - twoPi * (long long)( angle / twoPi );
+    }
+
     double sin(double n) {
+        n = wrapAngle(n);
         double n_pow = n * n * n;
         double n_fac = 2 * 3;
-        int fac = 5;
+        int fac = 4;
+        double ret = n;
         bool minus = true;
         for (int i = 0; i < 8; i++) {
             if (minus) {
-                n -= n_pow / n_fac;
+                ret -= n_pow / n_fac;
             } else {
-                n += n_pow / n_fac;
+                ret += n_pow / n_fac;
             }
-
             n_pow *= n * n;
             n_fac *= (fac) * (fac + 1);
             fac += 2;
             minus = !minus;
         }
-
-        return n;
+        return ret;
     }
 
     double cos(double n) {
-        return sin(PI/2 - n);
-    }
-
-    double tan(double n) {
-        if (sin(n) == 0.0) {
-            exit(1);
-            return 0;
-        }
-
-        return sin(n) / cos(n);
+        return sin(M_PI/2 - n);
     }
 
 }

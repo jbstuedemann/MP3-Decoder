@@ -9,6 +9,8 @@ namespace audio {
 
 namespace mp3 {
 
+constexpr double M_PI = 3.141592653589793;
+
 template<typename T>
 inline T min(T a, T b) {
     return (a < b ? a : b);
@@ -27,8 +29,6 @@ uint32_t readBits(uint8_t *buffer, int start_bit, int end_bit);
 
 double sin(double x);
 double cos(double x);
-
-
 
 }
 

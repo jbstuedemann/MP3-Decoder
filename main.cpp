@@ -1,8 +1,8 @@
-#define PI    3.141592653589793
-#define SQRT2 1.414213562373095
-
-#include <bits/stdc++.h>
+#include <iostream>
+#include <fstream>
 #include "mp3.h"
+
+#undef M_PI
 
 using namespace std;
 
@@ -24,8 +24,7 @@ void readBitsTest() {
 
 int main(){
 
-    printf("%f\n", cos(3* PI / 2));
-    printf("%f\n", SQRT2 / 2);
+    printf("%f\n", io::audio::mp3::sin(io::audio::mp3::M_PI / 2));
 //    readBitsTest();
     exit(0);
 
