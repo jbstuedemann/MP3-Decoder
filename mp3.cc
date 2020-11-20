@@ -129,6 +129,16 @@ namespace mp3 {
             }
     }
 
+    void printField(uint32_t** field, char* name, int rows, int cols) {
+        printf("%s: ", name);
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                printf("%d ", field[i][j]);
+            }
+        }
+        printf("\n");
+    }
+
     void MP3FrameDecoder::setSideInfo(uint8_t* buffer) {
         int count = 0;
 
@@ -205,6 +215,7 @@ namespace mp3 {
                 // table that determines which count1 table is used
                 side_info->count1table_select[gr][ch] = (int)readBitsInc(buffer, &count, 1);
             }
+
     }
 
     void MP3FrameDecoder::unpackScalefacs(uint8_t* data, uint32_t granule, uint32_t channel, int &bit) {
@@ -402,27 +413,46 @@ namespace mp3 {
     }
     
     void MP3SideInfo::printSideInfo() {
-        /*printf("main_data_begin: %d\n", main_data_begin);
-        printf("private_bits: %d\n", private_bits);
-        printf("scsfi: %d\n", scsfi);
+        printf("main_data_begin: %d\n", main_data_begin);
+        printf("scsfi: ");
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 2; j++) {
+                printf("%d ", scfsi[i][j]);
+            }
+        }
+        printf("\n");
 
         for (int i = 0; i < 2; i++) {
             printf("************ GRANULE %d ***********\n", i + 1);
             for (int j = 0; j < 2; j++) {
                 printf("************ CHANNEL %d ***********\n", j + 1);
-                printf("count1table_select: %d\n", count1table_select[i][j]);
-                printf("scalefac_scale: %d\n", scalefac_scale[i][j]);
-                printf("preflag: %d\n", preflag[i][j]);
-                printf("region1_count: %d\n", region1_count[i][j]);
-                printf("region0_count: %d\n", region0_count[i][j]);
-                printf("table_select: %d\n", table_select[i][j]);
-                printf("windows_switching_flag: %d\n", windows_switching_flag[i][j]);
-                printf("scalefac_compress: %d\n", scalefac_compress[i][j]);
-                printf("global_gain: %d\n", global_gain[i][j]);
-                printf("big_values: %d\n", big_values[i][j]);
                 printf("part2_3_length: %d\n", part2_3_length[i][j]);
+                printf("part2_length: %d\n", part2_length[i][j]);
+                printf("big_value: %d\n", big_value[i][j]);
+                printf("global_gain: %d\n", global_gain[i][j]);
+                printf("scalefac_compress: %d\n", scalefac_compress[i][j]);
+                printf("slen1: %d\n", slen1[i][j]);
+                printf("slen2: %d\n", slen2[i][j]);
+                printf("window_switching: %d\n", window_switching[i][j]);
+                printf("block_type: %d\n", block_type[i][j]);
+                printf("mixed_block_flag: %d\n", mixed_block_flag[i][j]);
+                printf("switch_point_l: %d\n", switch_point_l[i][j]);
+                printf("switch_point_s: %d\n", switch_point_s[i][j]);
+                printf("table_select: ");
+                for (int k = 0; k < 3; k++) {
+                    printf("%d ", table_select[i][j][k]);
+                }
+                printf("\nsubblock_gain: ");
+                for (int k = 0; k < 3; k++) {
+                    printf("%d ", subblock_gain[i][j][k]);
+                }
+                printf("\nregion0_count: %d\n", region0_count[i][j]);
+                printf("region1_count: %d\n", region1_count[i][j]);
+                printf("preflag: %d\n", preflag[i][j]);
+                printf("scalefac_scale: %d\n", scalefac_scale[i][j]);
+                printf("count1table_select: %d\n", count1table_select[i][j]);
             }
-        }*/
+        }
     }
 
     MP3::MP3(uint8_t* data) : data(data) {
