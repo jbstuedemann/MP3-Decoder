@@ -24,7 +24,7 @@ int main(){
 //    exit(0);
 
     ifstream ifs;
-    ifs.open ("test.mp3", std::ifstream::in);
+    ifs.open ("../test.mp3", std::ifstream::in);
 
     uint8_t data [1000];
     ifs.read((char*)data, 1000);

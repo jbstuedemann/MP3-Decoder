@@ -154,36 +154,45 @@ namespace mp3 {
     }
 
     void MP3FrameDecoder::unpackScalefacs(uint8_t* data, uint32_t granule, uint32_t channel, int &bit) {
-        /*auto slen = kSlenTable[side_info->scalefac_compress[granule][channel]];
-        int byte = 0;
-        int bit = 0;
+        auto slen = kSlenTable[side_info->scalefac_compress[granule][channel]];
         if (granule == 0) {
             for (int i = 0; i < 21; i++) {
                 if (i < 11) {
-                    scalefacs[granule][channel][i] = readBitsInc(data, &byte, &bit, slen[0]);
+                    scalefacs[granule][channel][i] = readBitsInc(data, &bit, slen[0]);
                 } else {
-                    scalefacs[granule][channel][i] = readBitsInc(data, &byte, &bit, slen[1]);
+                    scalefacs[granule][channel][i] = readBitsInc(data, &bit, slen[1]);
                 }
             }
         } else {
-            auto scsfi = side_info->scsfi;
+            auto scfsi = side_info->scfsi[channel];
             for (int i = 0; i < 21; i++) {
-                uint32_t mask = getMask(i, channel);
-                if (i < 11) {
-                    if (scsfi & mask) {
+                if (i < 6) {
+                    if (scfsi[0]) {
                         scalefacs[granule][channel][i] = scalefacs[0][channel][i];
                     } else {
-                        scalefacs[granule][channel][i] = readBitsInc(data, &byte, &bit, slen[0]);
+                        scalefacs[granule][channel][i] = readBitsInc(data, &bit, slen[0]);
+                    }
+                } else if (i < 11) {
+                    if (scfsi[1]) {
+                        scalefacs[granule][channel][i] = scalefacs[0][channel][i];
+                    } else {
+                        scalefacs[granule][channel][i] = readBitsInc(data, &bit, slen[0]);
+                    }
+                } else if (i < 16) {
+                    if (scfsi[2]) {
+                        scalefacs[granule][channel][i] = scalefacs[0][channel][i];
+                    } else {
+                        scalefacs[granule][channel][i] = readBitsInc(data, &bit, slen[1]);
                     }
                 } else {
-                    if (scsfi & mask) {
+                    if (scfsi[3]) {
                         scalefacs[granule][channel][i] = scalefacs[0][channel][i];
                     } else {
-                        scalefacs[granule][channel][i] = readBitsInc(data, &byte, &bit, slen[1]);
+                        scalefacs[granule][channel][i] = readBitsInc(data, &bit, slen[0]);
                     }
                 }
             }
-        }*/
+        }
     }
 
     void MP3FrameDecoder::unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit) {
