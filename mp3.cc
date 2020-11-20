@@ -394,7 +394,22 @@ namespace mp3 {
     }
 
     void MP3FrameDecoder::aliasReduction(uint32_t granule, uint32_t channel) {
+        int sb_max = side_info->mixed_block_flag[granule][channel] ? 2 : 32;
+        for (int sb = 1; sb < sb_max; sb++)
+            for (int sample = 0; sample < 8; sample++) {
+                int offset1 = 18 * sb - sample - 1;
+                int offset2 = 18 * sb + sample;
+                double s1 = samples[granule][channel][offset1];
+                double s2 = samples[granule][channel][offset2];
+                samples[granule][channel][offset1] = s1 * cs[sample] - s2 * ca[sample];
+                samples[granule][channel][offset2] = s2 * cs[sample] + s1 * ca[sample];
+            }
+    }
 
+    void MP3FrameDecoder::frequencyInversion(uint32_t granule, uint32_t channel) {
+        for (int sb = 1; sb < 18; sb += 2)
+            for (int i = 1; i < 32; i += 2)
+                samples[granule][channel][i * 18 + sb] *= -1;
     }
 
     void MP3FrameDecoder::IMDCT(uint32_t granule, uint32_t channel) {
@@ -410,8 +425,9 @@ namespace mp3 {
     }
 
     void MP3SideInfo::printSideInfo() {
-        printf("main_data_begin: %d\n", main_data_begin);
-        printf("scsfi: ");
+        printf("************ SIDE INFO ************\n");
+        printf("\tmain_data_begin: %d\n", main_data_begin);
+        printf("\tscsfi: ");
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 2; j++) {
                 printf("%d ", scfsi[i][j]);
@@ -423,31 +439,31 @@ namespace mp3 {
             printf("************ GRANULE %d ***********\n", i + 1);
             for (int j = 0; j < 2; j++) {
                 printf("************ CHANNEL %d ***********\n", j + 1);
-                printf("part2_3_length: %d\n", part2_3_length[i][j]);
-                printf("part2_length: %d\n", part2_length[i][j]);
-                printf("big_value: %d\n", big_value[i][j]);
-                printf("global_gain: %d\n", global_gain[i][j]);
-                printf("scalefac_compress: %d\n", scalefac_compress[i][j]);
-                printf("slen1: %d\n", slen1[i][j]);
-                printf("slen2: %d\n", slen2[i][j]);
-                printf("window_switching: %d\n", window_switching[i][j]);
-                printf("block_type: %d\n", block_type[i][j]);
-                printf("mixed_block_flag: %d\n", mixed_block_flag[i][j]);
-                printf("switch_point_l: %d\n", switch_point_l[i][j]);
-                printf("switch_point_s: %d\n", switch_point_s[i][j]);
-                printf("table_select: ");
+                printf("\tpart2_3_length: %d\n", part2_3_length[i][j]);
+                printf("\tpart2_length: %d\n", part2_length[i][j]);
+                printf("\tbig_value: %d\n", big_value[i][j]);
+                printf("\tglobal_gain: %d\n", global_gain[i][j]);
+                printf("\tscalefac_compress: %d\n", scalefac_compress[i][j]);
+                printf("\tslen1: %d\n", slen1[i][j]);
+                printf("\tslen2: %d\n", slen2[i][j]);
+                printf("\twindow_switching: %d\n", window_switching[i][j]);
+                printf("\tblock_type: %d\n", block_type[i][j]);
+                printf("\tmixed_block_flag: %d\n", mixed_block_flag[i][j]);
+                printf("\tswitch_point_l: %d\n", switch_point_l[i][j]);
+                printf("\tswitch_point_s: %d\n", switch_point_s[i][j]);
+                printf("\ttable_select: ");
                 for (int k = 0; k < 3; k++) {
                     printf("%d ", table_select[i][j][k]);
                 }
-                printf("\nsubblock_gain: ");
+                printf("\n\tsubblock_gain: ");
                 for (int k = 0; k < 3; k++) {
                     printf("%d ", subblock_gain[i][j][k]);
                 }
-                printf("\nregion0_count: %d\n", region0_count[i][j]);
-                printf("region1_count: %d\n", region1_count[i][j]);
-                printf("preflag: %d\n", preflag[i][j]);
-                printf("scalefac_scale: %d\n", scalefac_scale[i][j]);
-                printf("count1table_select: %d\n", count1table_select[i][j]);
+                printf("\n\tregion0_count: %d\n", region0_count[i][j]);
+                printf("\tregion1_count: %d\n", region1_count[i][j]);
+                printf("\tpreflag: %d\n", preflag[i][j]);
+                printf("\tscalefac_scale: %d\n", scalefac_scale[i][j]);
+                printf("\tcount1table_select: %d\n", count1table_select[i][j]);
             }
         }
     }

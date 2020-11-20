@@ -228,6 +228,7 @@ namespace mp3 {
         void MSStereo(uint32_t granule);
         void reorder(uint32_t granule, uint32_t channel);
         void aliasReduction(uint32_t granule, uint32_t channel);
+        void frequencyInversion(uint32_t granule, uint32_t channel);
         void IMDCT(uint32_t granule, uint32_t channel);
         void synthFilterbank(uint32_t granule, uint32_t channel);
         void interleave();
