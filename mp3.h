@@ -5,8 +5,8 @@
 #include "tables.h"
 #include "huffman.h"
 #include "audio_util.h"
+#include "vector.h"
 #include <iostream>
-#include <string.h>
 
 namespace io {
 
@@ -155,8 +155,7 @@ namespace mp3 {
     struct MP3SideInfo {
         // Metadata
         bool scfsi[2][4]; // 8 bits
-        uint32_t private_bits; // 3 bits
-        uint32_t main_data_begin; // 9 bits; if 0, main data directly follows side info, otherwise it's a negative offset from sync word
+        int main_data_begin; // 9 bits; if 0, main data directly follows side info, otherwise it's a negative offset from sync word
 
         // Actual Side info
         // field[x][y] = field for granule x + 1, channel y + 1
@@ -200,18 +199,28 @@ namespace mp3 {
         HuffmanTree* tables [kNumHuffmanTables];
 
         // other decoding stuffs
-        double samples [2][2][576];
-        int scalefacs [2][2][22];
+        int scalefac_l [2][2][22];
+        int scalefac_s [2][2][3][13];
+
+        float prev_samples [2][32][18];
+        float fifo [2][1024];
+
+        util::Vector<uint8_t> main_data;
+        float samples [2][2][576];
+        float pcm [2304];
+
+        static const int num_prev_frames = 9;
+        int prev_frame_size [num_prev_frames];
 
         MP3FrameDecoder();
         ~MP3FrameDecoder();
 
         uint32_t readFrame(uint8_t* data);
 
-        void setBandTables();
+        void postHeaderSetup();
 
         void setSideInfo(uint8_t* buffer);
-        //void setMainData(uint8_t* buffer);
+        void setMainData(uint8_t* buffer);
         void unpackScalefacs(uint8_t* data, uint32_t granule, uint32_t channel, int &bit);
         void unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit);
 
