@@ -421,7 +421,11 @@ namespace mp3 {
     }
 
     void MP3FrameDecoder::interleave() {
-
+        int i = 0;
+        for (int gr = 0; gr < 2; gr++)
+            for (int sample = 0; sample < 576; sample++)
+                for (int ch = 0; ch < header->channels(); ch++)
+                    pcm[i++] = samples[gr][ch][sample];
     }
 
     void MP3SideInfo::printSideInfo() {
