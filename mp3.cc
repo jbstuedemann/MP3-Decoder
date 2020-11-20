@@ -208,43 +208,95 @@ namespace mp3 {
 
     void MP3FrameDecoder::unpackScalefacs(uint8_t* data, uint32_t granule, uint32_t channel, int &bit) {
         auto slen = kSlenTable[side_info->scalefac_compress[granule][channel]];
-        if (granule == 0) {
-            for (int i = 0; i < 21; i++) {
-                if (i < 11) {
-                    scalefacs[granule][channel][i] = readBitsInc(data, &bit, slen[0]);
-                } else {
-                    scalefacs[granule][channel][i] = readBitsInc(data, &bit, slen[1]);
+        if (side_info->block_type[granule][channel] == 2 && side_info->window_switching[granule][channel]) {
+            if (side_info->mixed_block_flag[granule][channel]) {
+                for (int i = 0; i < 8; i++) {
+                    scalefac_l[granule][channel][i] = (int) readBitsInc(data, &bit, slen[0]);
                 }
+
+                for (int i = 0; i < 3; i++) {
+                    for (int j = 3; j < 6; j++) {
+                        scalefac_s[granule][channel][i][j] = (int) readBitsInc(data, &bit, slen[0]);
+                    }
+                }
+            } else {
+                for (int i = 0; i < 3; i++) {
+                    for (int j = 0; j < 6; j++) {
+                        scalefac_s[granule][channel][i][j] = (int) readBitsInc(data, &bit, slen[0]);
+                    }
+                }
+            }
+
+            for (int i = 0; i < 3; i++) {
+                for (int j = 6; j < 12; j++) {
+                    scalefac_s[granule][channel][i][j] = (int) readBitsInc(data, &bit, slen[1]);
+                }
+            }
+
+            for (int i = 0; i < 3; i++) {
+                scalefac_s[granule][channel][i][12] = 0;
             }
         } else {
-            auto scfsi = side_info->scfsi[channel];
-            for (int i = 0; i < 21; i++) {
-                if (i < 6) {
-                    if (scfsi[0]) {
-                        scalefacs[granule][channel][i] = scalefacs[0][channel][i];
+            if (granule == 0) {
+                for (int i = 0; i < 21; i++) {
+                    if (i < 11) {
+                        scalefac_l[granule][channel][i] = readBitsInc(data, &bit, slen[0]);
                     } else {
-                        scalefacs[granule][channel][i] = readBitsInc(data, &bit, slen[0]);
+                        scalefac_l[granule][channel][i] = readBitsInc(data, &bit, slen[1]);
                     }
-                } else if (i < 11) {
-                    if (scfsi[1]) {
-                        scalefacs[granule][channel][i] = scalefacs[0][channel][i];
+                }
+            } else {
+                auto scfsi = side_info->scfsi[channel];
+                for (int i = 0; i < 21; i++) {
+                    if (i < 6) {
+                        if (scfsi[0]) {
+                            scalefac_l[granule][channel][i] = scalefac_l[0][channel][i];
+                        } else {
+                            scalefac_l[granule][channel][i] = readBitsInc(data, &bit, slen[0]);
+                        }
+                    } else if (i < 11) {
+                        if (scfsi[1]) {
+                            scalefac_l[granule][channel][i] = scalefac_l[0][channel][i];
+                        } else {
+                            scalefac_l[granule][channel][i] = readBitsInc(data, &bit, slen[0]);
+                        }
+                    } else if (i < 16) {
+                        if (scfsi[2]) {
+                            scalefac_l[granule][channel][i] = scalefac_l[0][channel][i];
+                        } else {
+                            scalefac_l[granule][channel][i] = readBitsInc(data, &bit, slen[1]);
+                        }
                     } else {
-                        scalefacs[granule][channel][i] = readBitsInc(data, &bit, slen[0]);
-                    }
-                } else if (i < 16) {
-                    if (scfsi[2]) {
-                        scalefacs[granule][channel][i] = scalefacs[0][channel][i];
-                    } else {
-                        scalefacs[granule][channel][i] = readBitsInc(data, &bit, slen[1]);
-                    }
-                } else {
-                    if (scfsi[3]) {
-                        scalefacs[granule][channel][i] = scalefacs[0][channel][i];
-                    } else {
-                        scalefacs[granule][channel][i] = readBitsInc(data, &bit, slen[0]);
+                        if (scfsi[3]) {
+                            scalefac_l[granule][channel][i] = scalefac_l[0][channel][i];
+                        } else {
+                            scalefac_l[granule][channel][i] = readBitsInc(data, &bit, slen[0]);
+                        }
                     }
                 }
             }
+        }
+
+        // testing purposes
+        if (channel == 1 && granule == 1) {
+            for (int i = 0; i < 2; i++) {
+                printf("************ GRANULE %d ***********\n", i);
+                for (int j = 0; j < 2; j++) {
+                    printf("************ CHANNEL %d ***********\n", j);
+                    for (int k = 0; k < 22; k++) {
+                        printf("%d ", scalefac_l[i][j][k]);
+                    }
+                    printf("\n");
+                    for (int k = 0; k < 3; k++) {
+                        printf("WINDOW %d: ", k);
+                        for (int l = 0; l < 13; l++) {
+                            printf("%d ", scalefac_s[i][j][k][l]);
+                        }
+                        printf("\n");
+                    }
+                }
+            }
+            exit(0);
         }
     }
 
