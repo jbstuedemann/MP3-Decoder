@@ -2,6 +2,7 @@
 #define SQRT2 1.414213562373095
 
 #include <cstdlib>
+#include <cstdio>
 #include "audio_util.h"
 
 namespace io {
@@ -66,10 +67,11 @@ namespace mp3 {
         return readBitsInc(buffer, &start_bit, end_bit-start_bit);
     }
 
-    double sin(double n) {
+    double sin_(double n) {
+        double n_const = n;
         double n_pow = n * n * n;
         double n_fac = 2 * 3;
-        int fac = 5;
+        int fac = 4;
         bool minus = true;
         for (int i = 0; i < 8; i++) {
             if (minus) {
@@ -78,7 +80,7 @@ namespace mp3 {
                 n += n_pow / n_fac;
             }
 
-            n_pow *= n * n;
+            n_pow *= n_const * n_const;
             n_fac *= (fac) * (fac + 1);
             fac += 2;
             minus = !minus;
@@ -87,17 +89,17 @@ namespace mp3 {
         return n;
     }
 
-    double cos(double n) {
-        return sin(PI/2 - n);
+    double cos_(double n) {
+        return sin_(PI / 2 - n);
     }
 
     double tan(double n) {
-        if (sin(n) == 0.0) {
+        if (sin_(n) == 0.0) {
             exit(1);
             return 0;
         }
 
-        return sin(n) / cos(n);
+        return sin_(n) / cos_(n);
     }
 
 }

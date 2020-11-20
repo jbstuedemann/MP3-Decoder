@@ -24,7 +24,7 @@ void readBitsTest() {
 
 int main(){
 
-    printf("%f\n", cos(3* PI / 2));
+    printf("%f\n", io::audio::mp3::sin_(0));
     printf("%f\n", SQRT2 / 2);
 //    readBitsTest();
     exit(0);
