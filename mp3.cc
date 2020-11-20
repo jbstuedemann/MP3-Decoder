@@ -66,13 +66,14 @@ namespace mp3 {
             data += 2;
         }
 
+        if (header->frame_sync != 2047) return 0xFFFFFFFF;
+
         // process side info and main data
         setSideInfo(data);
         setMainData(frame_start);
 
-
-        for(int i = 0; i < 32; i++) printf("%02x\t", data[i]);
-        printf("\n");
+//        for(int i = 0; i < 32; i++) printf("%02x\t", data[i]);
+//        printf("\n");
         header->printHeader();
         side_info->printSideInfo();
 
@@ -361,6 +362,29 @@ namespace mp3 {
                 printf("part2_3_length: %d\n", part2_3_length[i][j]);
             }
         }*/
+    }
+
+    MP3::MP3(uint8_t* data) : data(data) {
+            id3_tag = new ID3{};
+            for (int i = 0; i < 10; i++) {
+                printf("%02x\t", data[i]);
+                ((uint8_t*)id3_tag)[i] = data[i];
+            }
+            printf("\nIDT: %c, %c, %c\n", id3_tag->i, id3_tag->d, id3_tag->t);
+            if (id3_tag->isID3()) printf("This is an ID3 with size: %d\n", id3_tag->size);
+            current_location += 70;
+            decoder = new MP3FrameDecoder();
+    }
+
+    bool MP3::readNextFrame() {
+        frame_number++;
+        uint32_t new_offset = decoder->readFrame(data+current_location);
+        if (new_offset == 0xFFFFFFFF) {
+            printf("Next frame_sync: %d\n", decoder->header->frame_sync);
+            return false;
+        }
+        current_location += new_offset;
+        return true;
     }
 
 }

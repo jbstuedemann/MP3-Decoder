@@ -225,6 +225,31 @@ namespace mp3 {
         void unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit);
 
     };
+
+    struct ID3 {
+        uint8_t i; // == 'I'
+        uint8_t d; // == 'D'
+        uint8_t t; // == 'T'
+        uint8_t major_version;
+        uint8_t revision_number;
+        uint8_t flags;
+        uint32_t size;
+        bool isID3() {
+            return (i=='I' && d=='D' && t=='3');
+        }
+    } __attribute__((packed));
+
+    class MP3 {
+        uint32_t current_location = 0;
+        uint32_t frame_number = 0;
+        MP3FrameDecoder* decoder;
+        ID3* id3_tag;
+        uint8_t* data;
+    public:
+        MP3(uint8_t* data);
+        ~MP3();
+        bool readNextFrame();
+    };
 }
 
 }
