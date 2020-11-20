@@ -1,6 +1,7 @@
 #define PI    3.141592653589793
 #define SQRT2 1.414213562373095
 
+#include <cstdlib>
 #include "audio_util.h"
 
 namespace io {
@@ -70,7 +71,7 @@ namespace mp3 {
         double n_fac = 2 * 3;
         int fac = 5;
         bool minus = true;
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < 8; i++) {
             if (minus) {
                 n -= n_pow / n_fac;
             } else {
@@ -88,6 +89,15 @@ namespace mp3 {
 
     double cos(double n) {
         return sin(PI/2 - n);
+    }
+
+    double tan(double n) {
+        if (sin(n) == 0.0) {
+            exit(1);
+            return 0;
+        }
+
+        return sin(n) / cos(n);
     }
 
 }

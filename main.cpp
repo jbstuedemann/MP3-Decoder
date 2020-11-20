@@ -1,3 +1,6 @@
+#define PI    3.141592653589793
+#define SQRT2 1.414213562373095
+
 #include <bits/stdc++.h>
 #include "mp3.h"
 
@@ -20,8 +23,11 @@ void readBitsTest() {
 }
 
 int main(){
+
+    printf("%f\n", cos(3* PI / 2));
+    printf("%f\n", SQRT2 / 2);
 //    readBitsTest();
-//    exit(0);
+    exit(0);
 
     ifstream ifs;
     ifs.open ("../test.mp3", std::ifstream::in);
