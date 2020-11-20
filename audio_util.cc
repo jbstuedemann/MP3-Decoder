@@ -1,3 +1,6 @@
+#define PI    3.141592653589793
+#define SQRT2 1.414213562373095
+
 #include "audio_util.h"
 
 namespace io {
@@ -60,6 +63,31 @@ namespace mp3 {
 
     uint32_t readBits(uint8_t* buffer, int start_bit, int end_bit) {
         return readBitsInc(buffer, &start_bit, end_bit-start_bit);
+    }
+
+    double sin(double n) {
+        double n_pow = n * n * n;
+        double n_fac = 2 * 3;
+        int fac = 5;
+        bool minus = true;
+        for (int i = 0; i < 12; i++) {
+            if (minus) {
+                n -= n_pow / n_fac;
+            } else {
+                n += n_pow / n_fac;
+            }
+
+            n_pow *= n * n;
+            n_fac *= (fac) * (fac + 1);
+            fac += 2;
+            minus = !minus;
+        }
+
+        return n;
+    }
+
+    double cos(double n) {
+        return sin(PI/2 - n);
     }
 
 }

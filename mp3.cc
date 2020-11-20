@@ -288,28 +288,6 @@ namespace mp3 {
                 }
             }
         }
-
-        // testing purposes
-        if (channel == 1 && granule == 1) {
-            for (int i = 0; i < 2; i++) {
-                printf("************ GRANULE %d ***********\n", i);
-                for (int j = 0; j < 2; j++) {
-                    printf("************ CHANNEL %d ***********\n", j);
-                    for (int k = 0; k < 22; k++) {
-                        printf("%d ", scalefac_l[i][j][k]);
-                    }
-                    printf("\n");
-                    for (int k = 0; k < 3; k++) {
-                        printf("WINDOW %d: ", k);
-                        for (int l = 0; l < 13; l++) {
-                            printf("%d ", scalefac_s[i][j][k][l]);
-                        }
-                        printf("\n");
-                    }
-                }
-            }
-            exit(0);
-        }
     }
 
     void MP3FrameDecoder::unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit) {

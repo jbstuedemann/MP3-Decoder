@@ -25,6 +25,11 @@ uint32_t readBitsInc(uint8_t* buffer, int* offset, int count);
 
 uint32_t readBits(uint8_t *buffer, int start_bit, int end_bit);
 
+double sin(double x);
+double cos(double x);
+
+
+
 }
 
 }
