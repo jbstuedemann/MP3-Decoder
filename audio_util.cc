@@ -88,7 +88,7 @@ namespace mp3 {
     }
 
     double cos(double n) {
-        return sin(M_PI/2 - n);
+        return sin(M_PI / 2 - n);
     }
 
 }
