@@ -380,7 +380,35 @@ namespace mp3 {
         }
 
     }
-    
+
+    void MP3FrameDecoder::requantize(uint32_t granule, uint32_t channel) {
+
+    }
+
+    void MP3FrameDecoder::MSStereo(uint32_t granule) {
+
+    }
+
+    void MP3FrameDecoder::reorder(uint32_t granule, uint32_t channel) {
+
+    }
+
+    void MP3FrameDecoder::aliasReduction(uint32_t granule, uint32_t channel) {
+
+    }
+
+    void MP3FrameDecoder::IMDCT(uint32_t granule, uint32_t channel) {
+
+    }
+
+    void MP3FrameDecoder::synthFilterbank(uint32_t granule, uint32_t channel) {
+
+    }
+
+    void MP3FrameDecoder::interleave() {
+
+    }
+
     void MP3SideInfo::printSideInfo() {
         printf("main_data_begin: %d\n", main_data_begin);
         printf("scsfi: ");
