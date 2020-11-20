@@ -202,12 +202,12 @@ namespace mp3 {
         int scalefac_l [2][2][22];
         int scalefac_s [2][2][3][13];
 
-        float prev_samples [2][32][18];
-        float fifo [2][1024];
+        double prev_samples [2][32][18];
+        double fifo [2][1024];
 
-        util::Vector<uint8_t> main_data;
-        float samples [2][2][576];
-        float pcm [2304];
+        util::Vector<uint8_t> main_data_buffer;
+        double samples [2][2][576];
+        double pcm [2304];
 
         static const int num_prev_frames = 9;
         int prev_frame_size [num_prev_frames];
@@ -229,7 +229,7 @@ namespace mp3 {
     struct ID3 {
         uint8_t i; // == 'I'
         uint8_t d; // == 'D'
-        uint8_t t; // == 'T'
+        uint8_t t; // == '3'
         uint8_t major_version;
         uint8_t revision_number;
         uint8_t flags;
