@@ -2,8 +2,6 @@
 #include <fstream>
 #include "mp3.h"
 
-#undef M_PI
-
 using namespace std;
 
 void readBitsTest() {
@@ -23,11 +21,6 @@ void readBitsTest() {
 }
 
 int main(){
-
-    printf("%f\n", io::audio::mp3::sin(io::audio::mp3::M_PI / 2));
-//    readBitsTest();
-    exit(0);
-
     ifstream ifs;
     ifs.open ("../test.mp3", std::ifstream::in);
 
