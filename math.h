@@ -18,6 +18,8 @@ namespace util {
         double sin(double n);
         inline double cos(double n) { return sin(M_PI / 2 - n); }
 
+        inline double abs(double n) { return (n > 0 ? n : -n); }
+
     }  // namespace math
 
 }  // namespace util
