@@ -61,19 +61,18 @@ namespace mp3 {
         postHeaderSetup();
         data += 4;
 
+        // if the frame sync is not all 1s, this is not an MP3 frame
+        if (header->frame_sync != 2047) return 0xFFFFFFFF;
+
         // skip the CRC (if protection_bit is 0)
         if (!header->protection_bit) {
             data += 2;
         }
 
-        if (header->frame_sync != 2047) return 0xFFFFFFFF;
-
         // process side info and main data
         setSideInfo(data);
         setMainData(frame_start);
 
-//        for(int i = 0; i < 32; i++) printf("%02x\t", data[i]);
-//        printf("\n");
         header->printHeader();
         side_info->printSideInfo();
 
@@ -127,16 +126,6 @@ namespace mp3 {
                 unpackSamples(main_data_buffer.data(), gr, ch, bit, max_bit);
                 bit = max_bit;
             }
-    }
-
-    void printField(uint32_t** field, char* name, int rows, int cols) {
-        printf("%s: ", name);
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                printf("%d ", field[i][j]);
-            }
-        }
-        printf("\n");
     }
 
     void MP3FrameDecoder::setSideInfo(uint8_t* buffer) {
@@ -342,7 +331,7 @@ namespace mp3 {
                 if (values[i] > 0)
                     sign = readBitsInc(main_data, &bit, 1) ? -1 : 1;
 
-                samples[gr][ch][sample + i] = (float)(sign * (values[i] + linbit));
+                samples[gr][ch][sample + i] = (double)(sign * (values[i] + linbit));
             }
 
         }
@@ -389,6 +378,7 @@ namespace mp3 {
         for (; sample < 576; sample++) {
             samples[gr][ch][sample] = 0;
         }
+
     }
     
     void MP3SideInfo::printSideInfo() {
