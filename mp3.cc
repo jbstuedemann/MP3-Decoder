@@ -358,7 +358,7 @@ namespace mp3 {
                 if (values[i] > 0)
                     sign = readBitsInc(main_data, &bit, 1) ? -1 : 1;
 
-                samples[gr][ch][sample + i] = (double)(sign * (values[i] + linbit));
+                samples[gr][ch][sample + i] = (float)(sign * (values[i] + linbit));
             }
 
         }
@@ -410,10 +410,10 @@ namespace mp3 {
 
     void MP3FrameDecoder::requantize(uint32_t gr, uint32_t ch) {
         using namespace util;
-        double exp1, exp2;
+        float exp1, exp2;
         int window = 0;
         int sfb = 0;
-        const double scalefac_mult = side_info->scalefac_scale[gr][ch] == 0 ? 0.5 : 1;
+        const float scalefac_mult = side_info->scalefac_scale[gr][ch] == 0 ? 0.5 : 1;
 
         for (uint32_t sample = 0, i = 0; sample < 576; sample++, i++) {
             if (side_info->block_type[gr][ch] == 2 || (side_info->mixed_block_flag[gr][ch] && sfb >= 8)) {
@@ -437,10 +437,10 @@ namespace mp3 {
                 exp2 = scalefac_mult * (scalefac_l[gr][ch][sfb] + side_info->preflag[gr][ch] * kPretab[sfb]);
             }
 
-            double sign = samples[gr][ch][sample] < 0 ? -1.0f : 1.0f;
-            double a = math::power(math::abs(samples[gr][ch][sample]), 4.0 / 3.0);
-            double b = math::power(2.0, exp1 / 4.0);
-            double c = math::power(2.0, -exp2);
+            float sign = samples[gr][ch][sample] < 0 ? -1.0f : 1.0f;
+            float a = math::power(math::abs(samples[gr][ch][sample]), 4.0 / 3.0);
+            float b = math::power(2.0, exp1 / 4.0);
+            float c = math::power(2.0, -exp2);
 
             samples[gr][ch][sample] = sign * a * b * c;
         }
@@ -448,8 +448,8 @@ namespace mp3 {
 
     void MP3FrameDecoder::midSideStereo(uint32_t gr) {
         for (int sample = 0; sample < 576; sample++) {
-            double middle = samples[gr][0][sample];
-            double side = samples[gr][1][sample];
+            float middle = samples[gr][0][sample];
+            float side = samples[gr][1][sample];
             samples[gr][0][sample] = (middle + side) / util::math::M_SQRT2;
             samples[gr][1][sample] = (middle - side) / util::math::M_SQRT2;
         }
@@ -459,7 +459,7 @@ namespace mp3 {
         int total = 0;
         int start = 0;
         int block = 0;
-        double samples[576] = {0};
+        float samples[576] = {0};
 
         for (int sb = 0; sb < 12; sb++) {
             const int sb_width = band_width.short_win[sb];
@@ -489,8 +489,8 @@ namespace mp3 {
             for (int sample = 0; sample < 8; sample++) {
                 int offset1 = 18 * sb - sample - 1;
                 int offset2 = 18 * sb + sample;
-                double s1 = samples[granule][channel][offset1];
-                double s2 = samples[granule][channel][offset2];
+                float s1 = samples[granule][channel][offset1];
+                float s2 = samples[granule][channel][offset2];
                 samples[granule][channel][offset1] = s1 * kCS[sample] - s2 * kCA[sample];
                 samples[granule][channel][offset2] = s2 * kCS[sample] + s1 * kCA[sample];
             }
@@ -504,8 +504,8 @@ namespace mp3 {
 
     void MP3FrameDecoder::IMDCT(uint32_t gr, uint32_t ch) {
         static bool init = true;
-        static double sine_block[4][36];
-        double sample_block[36];
+        static float sine_block[4][36];
+        float sample_block[36];
 
         if (init) {
             int i;
@@ -539,9 +539,9 @@ namespace mp3 {
         for (int block = 0; block < 32; block++) {
             for (int win = 0; win < (side_info->block_type[gr][ch] == 2 ? 3 : 1); win++) {
                 for (int i = 0; i < n; i++) {
-                    double xi = 0.0;
+                    float xi = 0.0;
                     for (int k = 0; k < half_n; k++) {
-                        double s = samples[gr][ch][18 * block + half_n * win + k];
+                        float s = samples[gr][ch][18 * block + half_n * win + k];
                         xi += s * util::math::cos(util::math::M_PI / (2 * n) * (2 * i + 1 + half_n) * (2 * k + 1));
                     }
 
@@ -551,7 +551,7 @@ namespace mp3 {
             }
 
             if (side_info->block_type[gr][ch] == 2) {
-                double temp_block[36];
+                float temp_block[36];
                 memcpy(temp_block, sample_block, 36 * 4);
 
                 int i = 0;
@@ -579,7 +579,7 @@ namespace mp3 {
     }
 
     void MP3FrameDecoder::synthFilterbank(uint32_t gr, uint32_t ch) {
-        static double n[64][32];
+        static float n[64][32];
         static bool init = true;
 
         if (init) {
@@ -589,8 +589,8 @@ namespace mp3 {
                     n[i][j] = util::math::cos((16.0 + i) * (2.0 * j + 1.0) * (util::math::M_PI / 64.0));
         }
 
-        double s[32], u[512], w[512];
-        double pcm[576];
+        float s[32], u[512], w[512];
+        float pcm[576];
 
         for (int sb = 0; sb < 18; sb++) {
             for (int i = 0; i < 32; i++)
@@ -615,7 +615,7 @@ namespace mp3 {
                 w[i] = u[i] * kSynthWindow[i];
 
             for (int i = 0; i < 32; i++) {
-                double sum = 0;
+                float sum = 0;
                 for (int j = 0; j < 16; j++)
                     sum += w[j * 32 + i];
                 pcm[32 * sb + i] = sum;
@@ -625,12 +625,20 @@ namespace mp3 {
         memcpy(samples[gr][ch], pcm, 576 * 4);
     }
 
+    int16_t scalePCM(float sample) {
+        if (sample >=  32766.5) return (int16_t) 32767;
+        if (sample <= -32767.5) return (int16_t)-32768;
+        int16_t s = (int16_t)(sample + .5f);
+        s -= (s < 0);
+        return s;
+    }
+
     void MP3FrameDecoder::interleave() {
         int i = 0;
         for (int gr = 0; gr < 2; gr++)
             for (int sample = 0; sample < 576; sample++)
                 for (uint32_t ch = 0; ch < header->channels(); ch++)
-                    pcm[i++] = samples[gr][ch][sample];
+                    pcm[i++] = scalePCM(samples[gr][ch][sample]);
 
         for (int j = 0; j < i; j++) std::cout << pcm[j] << ((j+1)%20 ? ' ' : '\n');
         if(i%20) std::cout << '\n';
