@@ -215,9 +215,10 @@ namespace mp3 {
         MP3FrameDecoder();
         ~MP3FrameDecoder();
 
-        uint32_t readFrame(uint8_t* data);
-
+        void getHeader(uint8_t* data);
         void postHeaderSetup();
+
+        uint32_t readFrame(uint8_t* data);
 
         void setSideInfo(uint8_t* buffer);
         void setMainData(uint8_t* buffer);
@@ -225,7 +226,7 @@ namespace mp3 {
         void unpackSamples(uint8_t* main_data, int gr, int ch, int bit, int max_bit);
 
         void requantize(uint32_t granule, uint32_t channel);
-        void MSStereo(uint32_t granule);
+        void midSideStereo(uint32_t granule);
         void reorder(uint32_t granule, uint32_t channel);
         void aliasReduction(uint32_t granule, uint32_t channel);
         void frequencyInversion(uint32_t granule, uint32_t channel);

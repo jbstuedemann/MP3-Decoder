@@ -21,17 +21,33 @@ void readBitsTest() {
 }
 
 int main(){
+    freopen("output.txt", "w", stdout);
     ifstream ifs;
     ifs.open ("../test.mp3", std::ifstream::in);
 
-    uint8_t data [10000];
-    ifs.read((char*)data, 10000);
+    uint8_t data [4096];
+    ifs.read((char*)data, 70);
 
-    auto mp3 = new io::audio::mp3::MP3(data);
+    /*auto mp3 = new io::audio::mp3::MP3(data);
+    uint32_t num_frames = 0;
     while (mp3->readNextFrame()) {
-        //For now:
+        num_frames++;
         break;
     }
+    printf("FRAMES %u\n", num_frames);*/
 
+    auto decoder = new io::audio::mp3::MP3FrameDecoder();
+    uint32_t num_frames = 0;
+    while (true) {
+        ifs.read((char*)data, 4);
+        if (ifs.fail()) break;
+        decoder->getHeader(data);
+        ifs.read((char*)(data+4), decoder->header->frameLength()-4);
+        std::cout << "frame " << num_frames << ", frame len " << decoder->header->frameLength() << '\n';
+        uint32_t ret = decoder->readFrame(data);
+        if(ret == 0) break;
+        num_frames++;
+    }
+    std::cout << num_frames << '\n';
     return 0;
 }

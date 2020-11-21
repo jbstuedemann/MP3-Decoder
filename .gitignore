@@ -107,3 +107,4 @@ fabric.properties
 # End of https://www.toptal.com/developers/gitignore/api/clion
 main.d*
 main
+output.txt
