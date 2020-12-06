@@ -626,20 +626,21 @@ namespace mp3 {
     }
 
     int16_t scalePCM(float sample) {
-        if (sample >=  32766.5) return (int16_t) 32767;
-        if (sample <= -32767.5) return (int16_t)-32768;
-        int16_t s = (int16_t)(sample + .5f);
-        s -= (s < 0);
-        return s;
+        float f = sample;
+        f = f * 32768 ;
+        if( f > 32767 ) f = 32767;
+        if( f < -32768 ) f = -32768;
+        return (int16_t) f;
     }
 
     void MP3FrameDecoder::interleave() {
         int i = 0;
         for (int gr = 0; gr < 2; gr++)
             for (int sample = 0; sample < 576; sample++)
-                for (uint32_t ch = 0; ch < header->channels(); ch++)
-                    pcm[i++] = scalePCM(samples[gr][ch][sample]);
-
+                for (uint32_t ch = 0; ch < header->channels(); ch++) {
+                    pcm[i] = scalePCM(samples[gr][ch][sample]);
+                    i++;
+                }
         for (int j = 0; j < i; j++) std::cout << pcm[j] << ((j+1)%20 ? ' ' : '\n');
         if(i%20) std::cout << '\n';
     }
